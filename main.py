@@ -124,7 +124,7 @@ class GameState():
         # Define observers lists
         self.observers = []
 
-    # Set properties for world width and height
+    # Set properties for world width and height eh ouais
     @property
     def worldWidth(self):
         return int(self.worldSize.x)
