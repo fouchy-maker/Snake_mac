@@ -121,7 +121,7 @@ class GameState():
         # Define bodies list
         self.bodies = []
 
-        # Define observers list
+        # Define observers lists
         self.observers = []
 
     # Set properties for world width and height
