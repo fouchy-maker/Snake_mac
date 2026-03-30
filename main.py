@@ -40,8 +40,6 @@ class Body(Unit):
     def __init__(self, gameState, position, tile):
         super().__init__(gameState, position, tile)
 
-        self.state.positionList.append(self.position)
-
     def lastPos(self):
         """
         Returns the penultimate position of the body if there is one, or returns left to actual position.
@@ -203,7 +201,11 @@ class MoveCommand(Command):
         # Compute bodies positions
         index = 0
         for body in self.state.bodies:
-            body.position = self.state.positionList[-index-2]
+            try:
+                new_pos = self.state.positionList[-index-2]
+            except IndexError:
+                new_pos = body.position
+            body.position = new_pos
             body.slidePos = Vector2(0,0)
             index += 1
 
