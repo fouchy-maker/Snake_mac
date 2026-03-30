@@ -122,7 +122,7 @@ class GameState():
         # Define observers lists
         self.observers = []
 
-    # Set properties for world width and height eh ouais and length
+    # Set properties for world width and height
     @property
     def worldWidth(self):
         return int(self.worldSize.x)
@@ -210,15 +210,15 @@ class MoveCommand(Command):
             index += 1
 
         # Delete positions not used by player or bodies
-        if len(self.state.positionList) > len(self.state.bodies) + 2:
-            del self.state.positionList[-(len(self.state.bodies) + 3)]
+        if len(self.state.positionList) > len(self.state.bodies) + 3:
+            del self.state.positionList[-(len(self.state.bodies) + 4)]
 
         # Compute collision with Food
         food = next(obj for obj in self.state.units if isinstance(obj, Food))
         if self.unit.position == food.position:
             self.state.foodMove = True
             # Add a Body to bodies list
-            self.state.bodies.append(Body(self.state, self.state.positionList[0], Vector2(1, 0)))
+            self.state.bodies.append(Body(self.state, self.state.positionList[1], Vector2(1, 0)))
 
             # Increment score
             self.state.score += 1
@@ -366,6 +366,8 @@ class LoadLevelCommand(Command):
                     unit = Snake(state, Vector2(x, y), Vector2(tileX, tileY))
                 elif flag == "body":
                     unit = Body(state, Vector2(x, y), Vector2(tileX, tileY))
+                elif flag == "food":
+                    unit = Food(state, Vector2(x, y), Vector2(tileX, tileY))
                 else:
                     raise RuntimeError("Error in {}: unknown flag".format(self.fileName))
                 units.append(unit)
@@ -381,7 +383,7 @@ class LoadLevelCommand(Command):
         # Check main properties
         if tileMap.orientation != ("orthogonal"):
             raise RuntimeError("Error in {}: invalid orientation".format(self.fileName))
-        if len(tileMap.layers) != 3:
+        if len(tileMap.layers) != 4:
             raise RuntimeError("Error in {}: invalid number of layers".format(self.fileName))
 
         # World size
@@ -398,9 +400,12 @@ class LoadLevelCommand(Command):
         # Units layer
         snakeTileset, snake = self.decodeUnitsLayer(state, tileMap, tileMap.layers[1], "snake")
         bodyTileset, bodies = self.decodeUnitsLayer(state, tileMap, tileMap.layers[2], "body")
-        if snakeTileset != wallsTileset or bodyTileset != wallsTileset:
+        foodTileset, foods = self.decodeUnitsLayer(state, tileMap, tileMap.layers[3], "food")
+        if snakeTileset != wallsTileset or bodyTileset != wallsTileset or foodTileset != wallsTileset:
             raise RuntimeError("Error in {}: tilesets must be the same for all layers".format(self.fileName))
-        state.units[:] = snake
+        state.units[:] = snake + foods
+        for food in foods:
+            FoodCommand(state, food).run()
         state.bodies[:] = bodies
         self.ui.layers[1].setTileset(cellSize, imageFile)
 
@@ -586,12 +591,7 @@ class UserInterface():
         # Controls
         self.moveCommandList = []
         self.playerUnit = None
-        LoadLevelCommand(self, "levels/level_2.tmx").run()
-
-        # Create Food and compute position
-        food = Food(self, None, Vector2(2, 0))
-        self.state.units.append(food)
-        FoodCommand(self.state, food).run()
+        LoadLevelCommand(self, "levels/level_3.tmx").run()
 
         # Loop Properties
         self.clock = pygame.time.Clock()
@@ -613,24 +613,33 @@ class UserInterface():
                 if event.key == pygame.K_ESCAPE:
                     self.running = False
                 elif event.key == pygame.K_UP:
-                        self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "up"))
+                    self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "up"))
                 elif event.key == pygame.K_DOWN:
-                        self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "down"))
+                    self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "down"))
                 elif event.key == pygame.K_LEFT:
-                        self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "left"))
+                    self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "left"))
                 elif event.key == pygame.K_RIGHT:
-                        self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "right"))
+                    self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "right"))
                 elif event.key == pygame.K_z:
-                        self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "up"))
+                    self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "up"))
                 elif event.key == pygame.K_s:
-                        self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "down"))
+                    self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "down"))
                 elif event.key == pygame.K_q:
-                        self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "left"))
+                    self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "left"))
                 elif event.key == pygame.K_d:
-                        self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "right"))
+                    self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "right"))
                 elif event.key == pygame.K_SPACE:
                     UserInterface.__init__(self)
                     self.state.gameStatus = "Play"
+                elif event.key == pygame.K_1:
+                    UserInterface.__init__(self)
+                    LoadLevelCommand(self, "levels/level_1.tmx").run()
+                elif event.key == pygame.K_2:
+                    UserInterface.__init__(self)
+                    LoadLevelCommand(self, "levels/level_2.tmx").run()
+                elif event.key == pygame.K_3:
+                    UserInterface.__init__(self)
+                    LoadLevelCommand(self, "levels/level_3.tmx").run()
 
     def update(self):
         if self.state.gameStatus == "Play":
