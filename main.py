@@ -78,34 +78,13 @@ class GameState():
             "Play",
             "Game Over",
         }
-        self.gameStatus = "Play"
+        self.gameStatus = "Game Over"
 
         # Define the score
         self.score = 0
 
         # Define walls
-        self.walls = [
-            [ Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), None, None, None, None, Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1)],
-            [ Vector2(0, 1), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, Vector2(0, 1)],
-            [ Vector2(0, 1), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, Vector2(0, 1)],
-            [ Vector2(0, 1), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, Vector2(0, 1)],
-            [ Vector2(0, 1), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, Vector2(0, 1)],
-            [ Vector2(0, 1), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, Vector2(0, 1)],
-            [ Vector2(0, 1), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, Vector2(0, 1)],
-            [ Vector2(0, 1), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, Vector2(0, 1)],
-            [ None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
-            [ None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
-            [ None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
-            [ None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None],
-            [ Vector2(0, 1), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, Vector2(0, 1)],
-            [ Vector2(0, 1), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, Vector2(0, 1)],
-            [ Vector2(0, 1), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, Vector2(0, 1)],
-            [ Vector2(0, 1), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, Vector2(0, 1)],
-            [ Vector2(0, 1), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, Vector2(0, 1)],
-            [ Vector2(0, 1), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, Vector2(0, 1)],
-            [ Vector2(0, 1), None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, Vector2(0, 1)],
-            [ Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), None, None, None, None, Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1), Vector2(0, 1)]
-        ]
+        self.walls = []
 
         # Set attribute to move food when colliding with player
         self.foodMove = False
@@ -591,7 +570,6 @@ class UserInterface():
         # Controls
         self.moveCommandList = []
         self.playerUnit = None
-        LoadLevelCommand(self, "levels/level_3.tmx").run()
 
         # Loop Properties
         self.clock = pygame.time.Clock()
@@ -633,12 +611,15 @@ class UserInterface():
                     self.state.gameStatus = "Play"
                 elif event.key == pygame.K_1:
                     UserInterface.__init__(self)
+                    self.state.gameStatus = "Play"
                     LoadLevelCommand(self, "levels/level_1.tmx").run()
                 elif event.key == pygame.K_2:
                     UserInterface.__init__(self)
+                    self.state.gameStatus = "Play"
                     LoadLevelCommand(self, "levels/level_2.tmx").run()
                 elif event.key == pygame.K_3:
                     UserInterface.__init__(self)
+                    self.state.gameStatus = "Play"
                     LoadLevelCommand(self, "levels/level_3.tmx").run()
 
     def update(self):
