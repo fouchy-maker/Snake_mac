@@ -498,18 +498,23 @@ class ScoreLayer(Layer):
 ###############################################################################
 
 class GameMode():
-    def __init__(self, ui):
-        self.ui = ui
-
+    def processInput(self):
+        raise NotImplementedError()
+    def update(self):
+        raise NotImplementedError()
     def render(self):
         raise NotImplementedError()
 
-class GameOver(GameMode):
-    def __init__(self, ui):
-        super().__init__(ui)
+class MessageGameMode(GameMode):
+    def __init__(self, ui, title, message):
+        self.ui = ui
+
         self.font = pygame.font.Font("Winter_Draw.ttf", 70)
         self.fontScore = pygame.font.Font("Winter_Draw.ttf", 50)
         self.fontEspace = pygame.font.Font("Winter_Draw.ttf", 30)
+
+        self.title = title
+        self.message = message
 
     def render(self):
         # Render Game Over text
@@ -531,13 +536,15 @@ class GameOver(GameMode):
         y3 = y2 + surface3.get_height() * 2
         self.ui.window.blit(surface3, (x3, y3))
 
-###############################################################################
-#                             User Interface                                  #
-###############################################################################
+class MenuGameMode(GameMode):
+    def __init__(self, ui):
+        self.ui = ui
 
-class UserInterface():
-    def __init__(self):
+class PlayGameMode(GameMode):
+    def __init__(self, ui):
         pygame.init()
+
+        self.ui = ui
 
         # Game State
         self.state = GameState()
@@ -548,7 +555,6 @@ class UserInterface():
         # Window
         windowSize = self.state.worldSize.elementwise() * self.cellSize
         self.window = pygame.display.set_mode((int(windowSize.x), int(windowSize.y)))
-        pygame.display.set_caption("Snake")
 
         # Rendering Properties
         self.textures = pygame.image.load("snake_fouchy32.png").convert()
@@ -568,12 +574,9 @@ class UserInterface():
             self.state.observers.append(layer)
 
         # Controls
+        self.commands = []
         self.moveCommandList = []
         self.playerUnit = None
-
-        # Loop Properties
-        self.clock = pygame.time.Clock()
-        self.running = True
 
     # Set properties for cell width and height
     @property
@@ -665,12 +668,60 @@ class UserInterface():
             gameOver.render()
         pygame.display.flip()
 
+###############################################################################
+#                             User Interface                                  #
+###############################################################################
+
+class UserInterface():
+    def __init__(self):
+        # Window
+        pygame.init()
+        self.window = pygame.display.set_mode((960, 640))
+        pygame.display.set_caption("Snake")
+        pygame.display.set_icon(pygame.image.load("icon.png"))
+
+        # Modes
+        self.playGameMode = None
+        self.overlayGameMode = MenuGameMode(self)
+        self.currentActiveMode = 'Overlay'
+
+        # Loop Properties
+        self.clock = pygame.time.Clock()
+        self.running = True
+
+    def loadLevel(self, fileName):
+        if self.playGameMode is None:
+            self.playGameMode = PlayGameMode(self)
+        self.playGameMode.commands.append(LoadLevelCommand(self.playGameMode, fileName))
+        try :
+            self.playGameMode.update()
+            self.currentActiveMode = "Play"
+        except Exception as ex:
+            print(ex)
+            self.playGameMode = None
+            self.showMessage("Level loading failed :'(")
+
+    def showGame(self):
+        if self.playGameMode is None:
+            self.currentActiveMode = "Play"
+
+    def showMeny(self):
+        self.overlayGameMode = MenuGameMode(self)
+        self.currentActiveMode = "Overlay"
+
+    def showMessage(self, title, message=None):
+        self.overlayGameMode = MessageGameMode(self, title, message)
+        self.currentActiveMode = "Overlay"
+        
+    def quitGame(self):
+        self.running = False
+
     def run(self):
         while self.running:
             self.processInput()
             self.update()
             self.render()
-            self.clock.tick(60)
+            self.clock.tick(60)x
 
 game = UserInterface()
 game.run()
