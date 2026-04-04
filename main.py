@@ -19,6 +19,7 @@ class Unit():
         self.angle = angle
         self.lastMoveEpoch = 0
         self.slidePos = Vector2(0, 0)
+        self.status = "alive"
 
 class Snake(Unit):
     def __init__(self, gameState, position, tile):
@@ -68,23 +69,16 @@ class GameState():
         self.epoch = 0
 
         # Define world size
-        self.worldSize = pygame.math.Vector2(30, 20)
+        self.worldSize = Vector2(30, 20)
 
         # Define move delay
         self.moveDelay = 10
-
-        # Define game status : Play, Game Over
-        self.gameStatus_dict = {
-            "Play",
-            "Game Over",
-        }
-        self.gameStatus = "Game Over"
 
         # Define the score
         self.score = 0
 
         # Define walls
-        self.walls = []
+        self.walls = [ [None ] * int(self.worldSize.x) ] * int(self.worldSize.y)
 
         # Set attribute to move food when colliding with player
         self.foodMove = False
@@ -159,14 +153,14 @@ class MoveCommand(Command):
         # If the player touches a body, set game status to Game Over
         for body in self.state.bodies:
             if new_pos == body.position:
-                self.state.gameStatus = "Game Over"
+                self.unit.status = "destroyed"
                 return
 
         # If the player touches a wall, set game status to Game Over
         for y in range(self.state.worldHeight):
             for x in range(self.state.worldWidth):
                 if self.state.walls[y][x] is not None and new_pos == Vector2(x, y):
-                    self.state.gameStatus = "Game Over"
+                    self.unit.status = "destroyed"
                     return
 
         # Save new position and direction to unit
@@ -260,8 +254,8 @@ class SlideCommand(Command):
         self.unit.slidePos += value.elementwise() * speed
 
 class LoadLevelCommand(Command):
-    def __init__(self, ui, fileName):
-        self.ui = ui
+    def __init__(self, gameMode, fileName):
+        self.gameMode = gameMode
         self.fileName = fileName
 
     def decodeLayer(self, tileMap, layer):
@@ -366,7 +360,7 @@ class LoadLevelCommand(Command):
             raise RuntimeError("Error in {}: invalid number of layers".format(self.fileName))
 
         # World size
-        state = self.ui.state
+        state = self.gameMode.state
         state.worldSize = Vector2(tileMap.width, tileMap.height)
 
         # Walls Layer
@@ -374,7 +368,7 @@ class LoadLevelCommand(Command):
         cellSize = Vector2(wallsTileset.tilewidth, wallsTileset.tileheight)
         state.walls[:] = array
         imageFile = wallsTileset.image.source
-        self.ui.layers[0].setTileset(cellSize, imageFile)
+        self.gameMode.layers[0].setTileset(cellSize, imageFile)
 
         # Units layer
         snakeTileset, snake = self.decodeUnitsLayer(state, tileMap, tileMap.layers[1], "snake")
@@ -386,14 +380,17 @@ class LoadLevelCommand(Command):
         for food in foods:
             FoodCommand(state, food).run()
         state.bodies[:] = bodies
-        self.ui.layers[1].setTileset(cellSize, imageFile)
+        self.gameMode.layers[1].setTileset(cellSize, imageFile)
 
         # Player unit
-        self.ui.playerUnit = snake[0]
+        self.gameMode.playerUnit = snake[0]
 
         # Window
         windowSize = state.worldSize.elementwise() * cellSize
-        self.ui.window = pygame.display.set_mode((int(windowSize.x), int(windowSize.y)))
+        self.gameMode.ui.window = pygame.display.set_mode((int(windowSize.x), int(windowSize.y)))
+
+        # Resume game
+        self.gameMode.gameOver = False
 
 ###############################################################################
 #                                Rendering                                    #
@@ -453,6 +450,10 @@ class ArrayLayer(Layer):
         self.surface = None
         self.surfaceFlags = surfaceFlags
 
+    def setTileset(self,cellSize,imageFile):
+        super().setTileset(cellSize,imageFile)
+        self.surface = None
+
     def render(self, surface):
         if self.surface is None:
             self.surface = pygame.Surface(surface.get_size(), self.surfaceFlags)
@@ -478,11 +479,11 @@ class UnitLayer(Layer):
 
 
 class ScoreLayer(Layer):
-    def __init__(self, ui, imageFile, state, font, position, color=(0, 0, 0)):
+    def __init__(self, ui, imageFile, state, color=(0, 0, 0)):
         super().__init__(ui, imageFile)
         self.state = state
-        self.font = font
-        self.position = position
+        self.font = pygame.font.Font("Winter_Draw.ttf", 30)
+        self.position = Vector2(self.state.worldWidth, 0)
         self.color = color
 
     def render(self, surface):
@@ -502,7 +503,7 @@ class GameMode():
         raise NotImplementedError()
     def update(self):
         raise NotImplementedError()
-    def render(self):
+    def render(self, window):
         raise NotImplementedError()
 
 class MessageGameMode(GameMode):
@@ -516,22 +517,35 @@ class MessageGameMode(GameMode):
         self.title = title
         self.message = message
 
-    def render(self):
-        # Render Game Over text
-        surface = self.font.render("Game Over !", True, (255, 0, 0))
+    def processInput(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.ui.quitGame()
+                break
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE \
+                        or event.key == pygame.K_SPACE \
+                        or event.key == pygame.K_RETURN:
+                    self.ui.showMenu()
+
+    def update(self):
+        pass
+
+    def render(self, window):
+        # Render title text
+        surface = self.font.render(self.title, True, (255, 0, 0))
         x = self.ui.window.get_width() // 2 - surface.get_width() // 2
         y = self.ui.window.get_height() // 3 - surface.get_height() // 2
         self.ui.window.blit(surface, (x, y))
 
         # Render Score text
-        surface2 = self.fontScore.render("Score : {}".format(self.ui.state.score), True, (255, 0, 0))
+        surface2 = self.fontScore.render(self.message, True, (255, 0, 0))
         x2 = self.ui.window.get_width() // 2 - surface2.get_width() // 2
         y2 = y + surface2.get_height() * 2
         self.ui.window.blit(surface2, (x2, y2))
 
         # Render Espace text
-        surface3 = self.fontEspace.render("Appuie sur Espace pour recommencer...".format(self.ui.state.score),
-                                         True, (0, 0, 0))
+        surface3 = self.fontEspace.render("Appuie sur Espace pour continuer...",True, (0, 0, 0))
         x3 = self.ui.window.get_width() // 2 - surface3.get_width() // 2
         y3 = y2 + surface3.get_height() * 2
         self.ui.window.blit(surface3, (x3, y3))
@@ -540,10 +554,94 @@ class MenuGameMode(GameMode):
     def __init__(self, ui):
         self.ui = ui
 
+        # Fonts
+        self.titleFont = pygame.font.Font("Winter_Draw.ttf", 70)
+        self.itemFont = pygame.font.Font("Winter_Draw.ttf", 50)
+
+        # Menu Items
+        self.menuItems = [
+            {
+                "title": "Level 1",
+                "action": lambda: self.ui.loadLevel("levels/level_1.tmx")
+            },
+            {
+                "title": "Level 2",
+                "action": lambda: self.ui.loadLevel("levels/level_2.tmx")
+            },
+            {
+                "title": "Level 3",
+                "action": lambda: self.ui.loadLevel("levels/level_3.tmx")
+            },
+            {
+                "title": "Level 4",
+                "action": lambda: self.ui.loadLevel("levels/level_4.tmx")
+            },
+            {
+                "title": "Quit",
+                "action": lambda: self.ui.quitGame()
+            }
+        ]
+        self.currentMenuItem = 0
+        self.menuCursor = pygame.image.load("cursor.png").convert()
+        self.menuCursor.set_colorkey(pygame.Color("black"), pygame.RLEACCEL)
+
+        # Compute Menu Width
+        self.menuWidth = 0
+        for item in self.menuItems:
+            surface = self.itemFont.render(item["title"], True, (0, 150, 0))
+            self.menuWidth = max(self.menuWidth, surface.get_width())
+            item["surface"] = surface
+
+    def processInput(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.ui.quitGame()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    self.ui.quitGame()
+                elif event.key == pygame.K_DOWN:
+                    if self.currentMenuItem < len(self.menuItems) - 1:
+                        self.currentMenuItem += 1
+                elif event.key == pygame.K_UP:
+                    if self.currentMenuItem > 0:
+                        self.currentMenuItem -= 1
+                elif event.key == pygame.K_RETURN:
+                    menuItem = self.menuItems[self.currentMenuItem]
+                    try:
+                        menuItem["action"]()
+                    except Exception as ex:
+                        print(ex)
+
+    def update(self):
+        pass
+
+    def render(self, window):
+        # Initial y
+        y = 50
+
+        # Title
+        surface = self.titleFont.render("FouchySnake !", True, (0, 200, 0))
+        x = (window.get_width() - surface.get_width()) // 2
+        window.blit(surface, (x, y))
+        y += (200 * surface.get_height()) // 100
+
+        # Draw Menu Items
+        x = (window.get_width() - self.menuWidth) // 2
+        for index, item in enumerate(self.menuItems):
+            # Item text
+            surface = item["surface"]
+            window.blit(surface, (x, y))
+
+            # Cursor
+            if index == self.currentMenuItem:
+                cursorX = x - self.menuCursor.get_width() - 10
+                cursorY = y + (surface.get_height() - self.menuCursor.get_height()) // 2
+                window.blit(self.menuCursor, (cursorX, cursorY))
+
+            y += (120 * surface.get_height()) // 100
+
 class PlayGameMode(GameMode):
     def __init__(self, ui):
-        pygame.init()
-
         self.ui = ui
 
         # Game State
@@ -552,21 +650,11 @@ class PlayGameMode(GameMode):
         # Cell Size
         self.cellSize = Vector2(32, 32)
 
-        # Window
-        windowSize = self.state.worldSize.elementwise() * self.cellSize
-        self.window = pygame.display.set_mode((int(windowSize.x), int(windowSize.y)))
-
-        # Rendering Properties
-        self.textures = pygame.image.load("snake_fouchy32.png").convert()
-        self.textures.set_colorkey(pygame.Color("black"), pygame.RLEACCEL)
-        self.fontScore = pygame.font.Font("Winter_Draw.ttf", 30)
-        self.fontPos = Vector2(self.state.worldWidth, 0)
-
         # Layer List
         self.layers = [
             ArrayLayer(self.cellSize, "snake_fouchy32.png", self.state, self.state.walls, 0), # Walls
             UnitLayer(self.cellSize, "snake_fouchy32.png", self.state, self.state.units), # Units
-            ScoreLayer(self.cellSize, None, self.state, self.fontScore, self.fontPos) # Score
+            ScoreLayer(self.cellSize, None, self.state) # Score
         ]
 
         # All layers observe GameState
@@ -577,6 +665,7 @@ class PlayGameMode(GameMode):
         self.commands = []
         self.moveCommandList = []
         self.playerUnit = None
+        self.gameOver = False
 
     # Set properties for cell width and height
     @property
@@ -587,12 +676,15 @@ class PlayGameMode(GameMode):
         return int(self.cellSize.y)
 
     def processInput(self):
+        if self.gameOver:
+            return
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                self.running = False
+                self.ui.quitGame()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    self.running = False
+                    self.ui.quitGame()
                 elif event.key == pygame.K_UP:
                     self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "up"))
                 elif event.key == pygame.K_DOWN:
@@ -609,64 +701,51 @@ class PlayGameMode(GameMode):
                     self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "left"))
                 elif event.key == pygame.K_d:
                     self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "right"))
-                elif event.key == pygame.K_SPACE:
-                    UserInterface.__init__(self)
-                    self.state.gameStatus = "Play"
-                elif event.key == pygame.K_1:
-                    UserInterface.__init__(self)
-                    self.state.gameStatus = "Play"
-                    LoadLevelCommand(self, "levels/level_1.tmx").run()
-                elif event.key == pygame.K_2:
-                    UserInterface.__init__(self)
-                    self.state.gameStatus = "Play"
-                    LoadLevelCommand(self, "levels/level_2.tmx").run()
-                elif event.key == pygame.K_3:
-                    UserInterface.__init__(self)
-                    self.state.gameStatus = "Play"
-                    LoadLevelCommand(self, "levels/level_3.tmx").run()
+
 
     def update(self):
-        if self.state.gameStatus == "Play":
-
-            if self.state.epoch-self.playerUnit.lastMoveEpoch >= self.state.moveDelay:
-                self.playerUnit.lastMoveEpoch = self.state.epoch
-                # Run Snake Command if the direction is different from player's or opposite
-                while len(self.moveCommandList) > 0:
-                    dir_opp = {"up": "down", "down": "up", "left": "right", "right": "left"}
-                    firstCommand = self.moveCommandList[0]
-                    if not (firstCommand.direction == self.playerUnit.direction
-                            or firstCommand.direction == dir_opp[self.playerUnit.direction]):
-                        firstCommand.run()
-                        del self.moveCommandList[0]
-                        break
+        for command in self.commands:
+            command.run()
+            self.commands.clear()
+        if self.state.epoch-self.playerUnit.lastMoveEpoch >= self.state.moveDelay:
+            self.playerUnit.lastMoveEpoch = self.state.epoch
+            # Run Snake Command if the direction is different from player's or opposite
+            while len(self.moveCommandList) > 0:
+                dir_opp = {"up": "down", "down": "up", "left": "right", "right": "left"}
+                firstCommand = self.moveCommandList[0]
+                if not (firstCommand.direction == self.playerUnit.direction
+                        or firstCommand.direction == dir_opp[self.playerUnit.direction]):
+                    firstCommand.run()
                     del self.moveCommandList[0]
-                # If Snake Command List is empty, run Command with snake position
-                else:
-                    MoveCommand(self.state, self.playerUnit, self.playerUnit.direction).run()
+                    break
+                del self.moveCommandList[0]
+            # If Snake Command List is empty, run Command with snake position
+            else:
+                MoveCommand(self.state, self.playerUnit, self.playerUnit.direction).run()
 
-                # Run Food Command
-                if self.state.foodMove:
-                    for unit in self.state.units:
-                        if isinstance(unit, Food):
-                            command = FoodCommand(self.state, unit)
-                            command.run()
-                    self.state.foodMove = False
-            SlideCommand(self.state, self.playerUnit, self.cellSize).run()
-            for body in self.state.bodies:
-                SlideCommand(self.state, body, self.cellSize).run()
-            self.state.epoch += 1
+            # Run Food Command
+            if self.state.foodMove:
+                for unit in self.state.units:
+                    if isinstance(unit, Food):
+                        command = FoodCommand(self.state, unit)
+                        command.run()
+                self.state.foodMove = False
+        SlideCommand(self.state, self.playerUnit, self.cellSize).run()
+        for body in self.state.bodies:
+            SlideCommand(self.state, body, self.cellSize).run()
+        self.state.epoch += 1
 
-    def render(self):
-        self.window.fill((200, 150, 50))
-        if self.state.gameStatus == "Play":
-            # Render Layers
-            for layer in self.layers:
-                layer.render(self.window)
+        # Check Game Over
+        if self.playerUnit.status != "alive":
+            self.gameOver = True
+            self.ui.showMessage("Game Over", "Score : {}".format(self.state.score))
 
-        elif self.state.gameStatus == "Game Over":
-            gameOver = GameOver(self)
-            gameOver.render()
-        pygame.display.flip()
+    def render(self, window):
+        self.ui.window.fill((200, 150, 50))
+        # Render Layers
+        for layer in self.layers:
+            layer.render(window)
+
 
 ###############################################################################
 #                             User Interface                                  #
@@ -702,10 +781,10 @@ class UserInterface():
             self.showMessage("Level loading failed :'(")
 
     def showGame(self):
-        if self.playGameMode is None:
+        if self.playGameMode is not None:
             self.currentActiveMode = "Play"
 
-    def showMeny(self):
+    def showMenu(self):
         self.overlayGameMode = MenuGameMode(self)
         self.currentActiveMode = "Overlay"
 
@@ -718,13 +797,36 @@ class UserInterface():
 
     def run(self):
         while self.running:
-            self.processInput()
-            self.update()
-            self.render()
-            self.clock.tick(60)x
+            # Inputs and Updates are exclusives
+            if self.currentActiveMode == "Overlay":
+                self.overlayGameMode.processInput()
+                self.overlayGameMode.update()
+            elif self.playGameMode is not None:
+                self.playGameMode.processInput()
+                try:
+                    self.playGameMode.update()
+                except Exception as ex:
+                    print(ex)
+                    self.playGameMode = None
+                    self.showMessage("Error during the game update...")
+
+            # Render the game (if any), and then the overlay (if active)
+            if self.playGameMode is not None:
+                self.playGameMode.render(self.window)
+            else:
+                self.window.fill((0, 0, 0))
+            if self.currentActiveMode == "Overlay":
+                darkSurface = pygame.Surface(self.window.get_size(), flags=pygame.SRCALPHA)
+                pygame.draw.rect(darkSurface, (0, 0, 0, 150), darkSurface.get_rect())
+                self.window.blit(darkSurface, (0, 0))
+                self.overlayGameMode.render(self.window)
+
+            # Update display
+            pygame.display.update()
+            self.clock.tick(60)
 
 game = UserInterface()
 game.run()
 
-with open("score.txt", "w") as file:
-    file.write(str(game.state.score))
+#with open("score.txt", "w") as file:
+    #file.write(str(game.state.score))
