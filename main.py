@@ -64,18 +64,24 @@ class Food(Unit):
         return self.position
 
 class GameState():
-    def __init__(self):
+    def __init__(self, level):
         # Define time unit
         self.epoch = 0
 
         # Define world size
         self.worldSize = Vector2(30, 20)
 
-        # Define move delay
-        self.moveDelay = 10
+        # Store level
+        self.level = level
 
-        # Define the score
+        # Define move delay
+        self.moveDelay = 10 - self.level
+
+        # Define score
         self.score = 0
+
+        # Define victory score
+        self.scoreVictory = 3
 
         # Define walls
         self.walls = [ [None ] * int(self.worldSize.x) ] * int(self.worldSize.y)
@@ -112,16 +118,22 @@ class GameState():
 
     def notifyFoodCollide(self):
         for observer in self.observers:
-            observer.FoodCollide()
+            observer.foodCollide()
 
     def notifyImpact(self):
         for observer in self.observers:
-            observer.Impact()
+            observer.impact()
+
+    def notifyLevelComplete(self):
+        for observer in self.observers:
+            observer.levelComplete()
 
 class GameStateObserver():
-    def FoodCollide(self):
+    def foodCollide(self):
         pass
-    def Impact(self):
+    def impact(self):
+        pass
+    def levelComplete(self):
         pass
 
 ###############################################################################
@@ -207,12 +219,14 @@ class MoveCommand(Command):
         # Compute collision with Food
         food = next(obj for obj in self.state.units if isinstance(obj, Food))
         if self.unit.position == food.position:
+            # Increment score
+            self.state.score += 1
+            if self.state.score >= self.state.scoreVictory:
+                self.state.notifyLevelComplete()
+                return
             self.state.foodMove = True
             # Add a Body to bodies list
             self.state.bodies.append(Body(self.state, self.state.positionList[1], Vector2(1, 0)))
-
-            # Increment score
-            self.state.score += 1
 
             # Speed up over 5 scores
             scoreMult = self.state.score / 5
@@ -516,17 +530,22 @@ class ScoreLayer(Layer):
         surface.blit(textSurface, textPos)
 
 class SoundLayer(Layer):
-    def __init__(self, foodCollideFile, impactFile):
+    def __init__(self, foodCollideFile, impactFile, victoryFile):
         self.foodCollideSound = pygame.mixer.Sound(foodCollideFile)
         self.foodCollideSound.set_volume(0.5)
         self.impactSound = pygame.mixer.Sound(impactFile)
         self.impactSound.set_volume(0.5)
+        self.victorySound = pygame.mixer.Sound(victoryFile)
+        self.victorySound.set_volume(0.5)
 
-    def FoodCollide(self):
+    def foodCollide(self):
         self.foodCollideSound.play()
 
-    def Impact(self):
+    def impact(self):
         self.impactSound.play()
+
+    def levelComplete(self):
+        self.victorySound.play()
 
     def render(self, surface):
         pass
@@ -541,9 +560,9 @@ class GameMode():
         self.__observers = []
     def addObserver(self, observer):
         self.__observers.append(observer)
-    def notifyLoadLevelRequested(self, fileName):
+    def notifyLoadLevelRequested(self, fileName, level):
         for observer in self.__observers:
-            observer.loadLevelRequested(fileName)
+            observer.loadLevelRequested(fileName, level)
     def notifyWorldSizeChanged(self, worldSize):
         for observer in self.__observers:
             observer.worldSizeChanged(worldSize)
@@ -553,6 +572,9 @@ class GameMode():
     def notifyShowGameRequested(self):
         for observer in self.__observers:
             observer.showGameRequested()
+    def notifyGameWon(self, level):
+        for observer in self.__observers:
+            observer.gameWon(level)
     def notifyGameLost(self, score):
         for observer in self.__observers:
             observer.gameLost(score)
@@ -571,13 +593,15 @@ class GameMode():
         raise NotImplementedError()
 
 class GameModeObserver():
-    def loadLevelRequested(self, fileName):
+    def loadLevelRequested(self, fileName, level):
         pass
     def worldSizeChanged(self, worldSize):
         pass
     def showMenuRequested(self):
         pass
     def showGameRequested(self):
+        pass
+    def gameWon(self, level):
         pass
     def gameLost(self, score):
         pass
@@ -587,7 +611,7 @@ class GameModeObserver():
         pass
 
 class MessageGameMode(GameMode):
-    def __init__(self, title, message):
+    def __init__(self, title, message, flag="gameOver", level=1):
         super().__init__()
 
         self.font = pygame.font.Font("Winter_Draw.ttf", 70)
@@ -596,6 +620,12 @@ class MessageGameMode(GameMode):
 
         self.title = title
         self.message = message
+        self.flag = flag
+        self.level = level
+
+    def showMenu(self):
+        self.notifyShowMenuRequested()
+        self.notifyMusicChangedRequested("assets/music/Shadow_Dance.mp3", 0.5)
 
     def processInput(self):
         for event in pygame.event.get():
@@ -603,11 +633,18 @@ class MessageGameMode(GameMode):
                 self.notifyQuitRequested()
                 break
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE \
-                        or event.key == pygame.K_SPACE \
-                        or event.key == pygame.K_RETURN:
-                    self.notifyShowMenuRequested()
-                    self.notifyMusicChangedRequested("assets/music/Shadow_Dance.mp3", 0.5)
+                if event.key == pygame.K_ESCAPE:
+                    self.showMenu()
+                if event.key == pygame.K_RETURN \
+                or event.key == pygame.K_SPACE:
+                    if self.flag == "gameOver":
+                        self.showMenu()
+                    elif self.flag == "victory":
+                        if self.level < 4:
+                            self.level += 1
+                            self.notifyLoadLevelRequested("levels/level_{}.tmx".format(self.level), self.level)
+                        else:
+                            self.showMenu()
 
     def update(self):
         pass
@@ -642,19 +679,19 @@ class MenuGameMode(GameMode):
         self.menuItems = [
             {
                 "title": "Level 1",
-                "action": lambda: self.notifyLoadLevelRequested("levels/level_1.tmx")
+                "action": lambda: self.notifyLoadLevelRequested("levels/level_1.tmx", 1)
             },
             {
                 "title": "Level 2",
-                "action": lambda: self.notifyLoadLevelRequested("levels/level_2.tmx")
+                "action": lambda: self.notifyLoadLevelRequested("levels/level_2.tmx", 2)
             },
             {
                 "title": "Level 3",
-                "action": lambda: self.notifyLoadLevelRequested("levels/level_3.tmx")
+                "action": lambda: self.notifyLoadLevelRequested("levels/level_3.tmx", 3)
             },
             {
                 "title": "Level 4",
-                "action": lambda: self.notifyLoadLevelRequested("levels/level_4.tmx")
+                "action": lambda: self.notifyLoadLevelRequested("levels/level_4.tmx", 4)
             },
             {
                 "title": "Quit",
@@ -682,9 +719,13 @@ class MenuGameMode(GameMode):
                 elif event.key == pygame.K_DOWN:
                     if self.currentMenuItem < len(self.menuItems) - 1:
                         self.currentMenuItem += 1
+                    else:
+                        self.currentMenuItem = 0
                 elif event.key == pygame.K_UP:
                     if self.currentMenuItem > 0:
                         self.currentMenuItem -= 1
+                    else:
+                        self.currentMenuItem = len(self.menuItems) - 1
                 elif event.key == pygame.K_RETURN:
                     menuItem = self.menuItems[self.currentMenuItem]
                     try:
@@ -721,10 +762,10 @@ class MenuGameMode(GameMode):
             y += (120 * surface.get_height()) // 100
 
 class PlayGameMode(GameMode):
-    def __init__(self):
+    def __init__(self, level):
         super().__init__()
         # Game State
-        self.state = GameState()
+        self.state = GameState(level)
 
         # Cell Size
         self.cellSize = Vector2(32, 32)
@@ -734,7 +775,7 @@ class PlayGameMode(GameMode):
             ArrayLayer(self.cellSize, "snake_fouchy32.png", self.state, self.state.walls, 0), # Walls
             UnitLayer(self.cellSize, "snake_fouchy32.png", self.state, self.state.units), # Units
             ScoreLayer(self.cellSize, None, self.state), # Score
-            SoundLayer("assets/sounds/gotFood.wav", "assets/sounds/impact.wav") # Sounds
+            SoundLayer("assets/sounds/gotFood.wav", "assets/sounds/impact.wav", "assets/sounds/victory.wav") # Sounds
         ]
 
         # All layers observe GameState
@@ -820,6 +861,10 @@ class PlayGameMode(GameMode):
             self.gameOver = True
             self.notifyGameLost(self.state.score)
 
+        # Check Victory
+        if self.state.score >= self.state.scoreVictory:
+            self.gameOver = True
+            self.notifyGameWon(self.state.level)
 
     def render(self, window):
         window.fill((200, 150, 50))
@@ -853,12 +898,12 @@ class UserInterface(GameModeObserver):
         # Menu Music
         self.musicChangedRequested("assets/music/Shadow_Dance.mp3", 0.5)
 
-    def loadLevelRequested(self, fileName):
+    def loadLevelRequested(self, fileName, level):
         if self.playGameMode is None:
-            self.playGameMode = PlayGameMode()
+            self.playGameMode = PlayGameMode(level)
             self.playGameMode.addObserver(self)
         else:
-            self.playGameMode.__init__()
+            self.playGameMode.__init__(level)
             self.playGameMode.addObserver(self)
 
         self.playGameMode.commands.append(LoadLevelCommand(self.playGameMode, fileName))
@@ -884,10 +929,14 @@ class UserInterface(GameModeObserver):
         self.overlayGameMode.addObserver(self)
         self.currentActiveMode = "Overlay"
 
-    def showMessage(self, title, message=None):
-        self.overlayGameMode = MessageGameMode(title, message)
+    def showMessage(self, title, message=None, flag="gameOver", level=1):
+        self.overlayGameMode = MessageGameMode(title, message, flag, level)
         self.overlayGameMode.addObserver(self)
         self.currentActiveMode = "Overlay"
+
+    def gameWon(self, level):
+        self.showMessage("Well done !", None, "victory", level)
+        pygame.mixer.music.stop()
 
     def gameLost(self, score):
         self.showMessage("Game Over", "Score : {}".format(score))
