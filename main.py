@@ -110,8 +110,19 @@ class GameState():
         """
         self.observers.append(observer)
 
+    def notifyFoodCollide(self):
+        for observer in self.observers:
+            observer.FoodCollide()
+
+    def notifyImpact(self):
+        for observer in self.observers:
+            observer.Impact()
+
 class GameStateObserver():
-    pass
+    def FoodCollide(self):
+        pass
+    def Impact(self):
+        pass
 
 ###############################################################################
 #                                Commands                                     #
@@ -126,6 +137,13 @@ class MoveCommand(Command):
         self.state = gameState
         self.unit = unit
         self.direction = direction
+
+    def gameOver(self):
+        """
+        Set unit status to destroyed and play Impact sound
+        """
+        self.unit.status = "destroyed"
+        self.state.notifyImpact()
 
     def run(self):
         # Compute new position using direction dictionary
@@ -153,14 +171,14 @@ class MoveCommand(Command):
         # If the player touches a body, set game status to Game Over
         for body in self.state.bodies:
             if new_pos == body.position:
-                self.unit.status = "destroyed"
+                self.gameOver()
                 return
 
         # If the player touches a wall, set game status to Game Over
         for y in range(self.state.worldHeight):
             for x in range(self.state.worldWidth):
                 if self.state.walls[y][x] is not None and new_pos == Vector2(x, y):
-                    self.unit.status = "destroyed"
+                    self.gameOver()
                     return
 
         # Save new position and direction to unit
@@ -201,6 +219,9 @@ class MoveCommand(Command):
             if scoreMult.is_integer() and self.state.moveDelay >= 5:
                 self.state.moveDelay -= 1
                 print("Speed Up ! ({})".format(self.state.moveDelay))
+
+            # Notify Sound Layer
+            self.state.notifyFoodCollide()
 
 class FoodCommand(Command):
     def __init__(self, gameState, unit):
@@ -387,7 +408,7 @@ class LoadLevelCommand(Command):
 
         # Window
         windowSize = state.worldSize.elementwise() * cellSize
-        self.gameMode.ui.window = pygame.display.set_mode((int(windowSize.x), int(windowSize.y)))
+        self.gameMode.notifyWorldSizeChanged(windowSize)
 
         # Resume game
         self.gameMode.gameOver = False
@@ -443,8 +464,8 @@ class Layer(GameStateObserver):
         raise NotImplementedError()
 
 class ArrayLayer(Layer):
-    def __init__(self, ui, imageFile, state, array, surfaceFlags=pygame.SRCALPHA):
-        super().__init__(ui, imageFile)
+    def __init__(self, cellSize, imageFile, state, array, surfaceFlags=pygame.SRCALPHA):
+        super().__init__(cellSize, imageFile)
         self.state = state
         self.array = array
         self.surface = None
@@ -466,8 +487,8 @@ class ArrayLayer(Layer):
         surface.blit(self.surface, (0, 0))
 
 class UnitLayer(Layer):
-    def __init__(self, ui, imageFile, state, units):
-        super().__init__(ui, imageFile)
+    def __init__(self, cellSize, imageFile, state, units):
+        super().__init__(cellSize, imageFile)
         self.state = state
         self.units = units
 
@@ -479,8 +500,8 @@ class UnitLayer(Layer):
 
 
 class ScoreLayer(Layer):
-    def __init__(self, ui, imageFile, state, color=(0, 0, 0)):
-        super().__init__(ui, imageFile)
+    def __init__(self, cellSize, imageFile, state, color=(0, 0, 0)):
+        super().__init__(cellSize, imageFile)
         self.state = state
         self.font = pygame.font.Font("Winter_Draw.ttf", 30)
         self.position = Vector2(self.state.worldWidth, 0)
@@ -494,11 +515,54 @@ class ScoreLayer(Layer):
         textPos = Vector2(x, y)
         surface.blit(textSurface, textPos)
 
+class SoundLayer(Layer):
+    def __init__(self, foodCollideFile, impactFile):
+        self.foodCollideSound = pygame.mixer.Sound(foodCollideFile)
+        self.foodCollideSound.set_volume(0.5)
+        self.impactSound = pygame.mixer.Sound(impactFile)
+        self.impactSound.set_volume(0.5)
+
+    def FoodCollide(self):
+        self.foodCollideSound.play()
+
+    def Impact(self):
+        self.impactSound.play()
+
+    def render(self, surface):
+        pass
+
+
 ###############################################################################
 #                             Game Modes                                      #
 ###############################################################################
 
 class GameMode():
+    def __init__(self):
+        self.__observers = []
+    def addObserver(self, observer):
+        self.__observers.append(observer)
+    def notifyLoadLevelRequested(self, fileName):
+        for observer in self.__observers:
+            observer.loadLevelRequested(fileName)
+    def notifyWorldSizeChanged(self, worldSize):
+        for observer in self.__observers:
+            observer.worldSizeChanged(worldSize)
+    def notifyShowMenuRequested(self):
+        for observer in self.__observers:
+            observer.showMenuRequested()
+    def notifyShowGameRequested(self):
+        for observer in self.__observers:
+            observer.showGameRequested()
+    def notifyGameLost(self, score):
+        for observer in self.__observers:
+            observer.gameLost(score)
+    def notifyQuitRequested(self):
+        for observer in self.__observers:
+            observer.quitRequested()
+    def notifyMusicChangedRequested(self, musicFile, volume, fadeOut=0):
+        for observer in self.__observers:
+            observer.musicChangedRequested(musicFile, volume, fadeOut)
+
     def processInput(self):
         raise NotImplementedError()
     def update(self):
@@ -506,9 +570,25 @@ class GameMode():
     def render(self, window):
         raise NotImplementedError()
 
+class GameModeObserver():
+    def loadLevelRequested(self, fileName):
+        pass
+    def worldSizeChanged(self, worldSize):
+        pass
+    def showMenuRequested(self):
+        pass
+    def showGameRequested(self):
+        pass
+    def gameLost(self, score):
+        pass
+    def quitRequested(self):
+        pass
+    def musicChangedRequested(self, musicFile, volume, fadeOut=0):
+        pass
+
 class MessageGameMode(GameMode):
-    def __init__(self, ui, title, message):
-        self.ui = ui
+    def __init__(self, title, message):
+        super().__init__()
 
         self.font = pygame.font.Font("Winter_Draw.ttf", 70)
         self.fontScore = pygame.font.Font("Winter_Draw.ttf", 50)
@@ -520,13 +600,14 @@ class MessageGameMode(GameMode):
     def processInput(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                self.ui.quitGame()
+                self.notifyQuitRequested()
                 break
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE \
                         or event.key == pygame.K_SPACE \
                         or event.key == pygame.K_RETURN:
-                    self.ui.showMenu()
+                    self.notifyShowMenuRequested()
+                    self.notifyMusicChangedRequested("assets/music/Shadow_Dance.mp3", 0.5)
 
     def update(self):
         pass
@@ -534,26 +615,25 @@ class MessageGameMode(GameMode):
     def render(self, window):
         # Render title text
         surface = self.font.render(self.title, True, (255, 0, 0))
-        x = self.ui.window.get_width() // 2 - surface.get_width() // 2
-        y = self.ui.window.get_height() // 3 - surface.get_height() // 2
-        self.ui.window.blit(surface, (x, y))
+        x = window.get_width() // 2 - surface.get_width() // 2
+        y = window.get_height() // 3 - surface.get_height() // 2
+        window.blit(surface, (x, y))
 
         # Render Score text
         surface2 = self.fontScore.render(self.message, True, (255, 0, 0))
-        x2 = self.ui.window.get_width() // 2 - surface2.get_width() // 2
+        x2 = window.get_width() // 2 - surface2.get_width() // 2
         y2 = y + surface2.get_height() * 2
-        self.ui.window.blit(surface2, (x2, y2))
+        window.blit(surface2, (x2, y2))
 
         # Render Espace text
         surface3 = self.fontEspace.render("Appuie sur Espace pour continuer...",True, (0, 0, 0))
-        x3 = self.ui.window.get_width() // 2 - surface3.get_width() // 2
+        x3 = window.get_width() // 2 - surface3.get_width() // 2
         y3 = y2 + surface3.get_height() * 2
-        self.ui.window.blit(surface3, (x3, y3))
+        window.blit(surface3, (x3, y3))
 
 class MenuGameMode(GameMode):
-    def __init__(self, ui):
-        self.ui = ui
-
+    def __init__(self):
+        super().__init__()
         # Fonts
         self.titleFont = pygame.font.Font("Winter_Draw.ttf", 70)
         self.itemFont = pygame.font.Font("Winter_Draw.ttf", 50)
@@ -562,23 +642,23 @@ class MenuGameMode(GameMode):
         self.menuItems = [
             {
                 "title": "Level 1",
-                "action": lambda: self.ui.loadLevel("levels/level_1.tmx")
+                "action": lambda: self.notifyLoadLevelRequested("levels/level_1.tmx")
             },
             {
                 "title": "Level 2",
-                "action": lambda: self.ui.loadLevel("levels/level_2.tmx")
+                "action": lambda: self.notifyLoadLevelRequested("levels/level_2.tmx")
             },
             {
                 "title": "Level 3",
-                "action": lambda: self.ui.loadLevel("levels/level_3.tmx")
+                "action": lambda: self.notifyLoadLevelRequested("levels/level_3.tmx")
             },
             {
                 "title": "Level 4",
-                "action": lambda: self.ui.loadLevel("levels/level_4.tmx")
+                "action": lambda: self.notifyLoadLevelRequested("levels/level_4.tmx")
             },
             {
                 "title": "Quit",
-                "action": lambda: self.ui.quitGame()
+                "action": lambda: self.notifyQuitRequested()
             }
         ]
         self.currentMenuItem = 0
@@ -595,10 +675,10 @@ class MenuGameMode(GameMode):
     def processInput(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                self.ui.quitGame()
+                self.notifyQuitRequested()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    self.ui.quitGame()
+                    self.notifyShowGameRequested()
                 elif event.key == pygame.K_DOWN:
                     if self.currentMenuItem < len(self.menuItems) - 1:
                         self.currentMenuItem += 1
@@ -641,9 +721,8 @@ class MenuGameMode(GameMode):
             y += (120 * surface.get_height()) // 100
 
 class PlayGameMode(GameMode):
-    def __init__(self, ui):
-        self.ui = ui
-
+    def __init__(self):
+        super().__init__()
         # Game State
         self.state = GameState()
 
@@ -654,7 +733,8 @@ class PlayGameMode(GameMode):
         self.layers = [
             ArrayLayer(self.cellSize, "snake_fouchy32.png", self.state, self.state.walls, 0), # Walls
             UnitLayer(self.cellSize, "snake_fouchy32.png", self.state, self.state.units), # Units
-            ScoreLayer(self.cellSize, None, self.state) # Score
+            ScoreLayer(self.cellSize, None, self.state), # Score
+            SoundLayer("assets/sounds/gotFood.wav", "assets/sounds/impact.wav") # Sounds
         ]
 
         # All layers observe GameState
@@ -681,10 +761,10 @@ class PlayGameMode(GameMode):
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                self.ui.quitGame()
+                self.notifyQuitRequested()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    self.ui.quitGame()
+                    self.notifyShowMenuRequested()
                 elif event.key == pygame.K_UP:
                     self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "up"))
                 elif event.key == pygame.K_DOWN:
@@ -738,10 +818,11 @@ class PlayGameMode(GameMode):
         # Check Game Over
         if self.playerUnit.status != "alive":
             self.gameOver = True
-            self.ui.showMessage("Game Over", "Score : {}".format(self.state.score))
+            self.notifyGameLost(self.state.score)
+
 
     def render(self, window):
-        self.ui.window.fill((200, 150, 50))
+        window.fill((200, 150, 50))
         # Render Layers
         for layer in self.layers:
             layer.render(window)
@@ -751,7 +832,7 @@ class PlayGameMode(GameMode):
 #                             User Interface                                  #
 ###############################################################################
 
-class UserInterface():
+class UserInterface(GameModeObserver):
     def __init__(self):
         # Window
         pygame.init()
@@ -761,41 +842,65 @@ class UserInterface():
 
         # Modes
         self.playGameMode = None
-        self.overlayGameMode = MenuGameMode(self)
+        self.overlayGameMode = MenuGameMode()
+        self.overlayGameMode.addObserver(self)
         self.currentActiveMode = 'Overlay'
 
         # Loop Properties
         self.clock = pygame.time.Clock()
         self.running = True
 
-    def loadLevel(self, fileName):
+        # Menu Music
+        self.musicChangedRequested("assets/music/Shadow_Dance.mp3", 0.5)
+
+    def loadLevelRequested(self, fileName):
         if self.playGameMode is None:
-            self.playGameMode = PlayGameMode(self)
+            self.playGameMode = PlayGameMode()
+            self.playGameMode.addObserver(self)
         else:
-            self.playGameMode.__init__(self)
+            self.playGameMode.__init__()
+            self.playGameMode.addObserver(self)
+
         self.playGameMode.commands.append(LoadLevelCommand(self.playGameMode, fileName))
         try :
             self.playGameMode.update()
             self.currentActiveMode = "Play"
+            self.musicChangedRequested("assets/music/Elephant_Walk.wav", 0.3, 2000)
+
         except Exception as ex:
             print(ex)
             self.playGameMode = None
             self.showMessage("Level loading failed :'(")
 
-    def showGame(self):
+    def worldSizeChanged(self, worldSize):
+        self.window = pygame.display.set_mode((int(worldSize.x),int(worldSize.y)))
+
+    def showGameRequested(self):
         if self.playGameMode is not None:
             self.currentActiveMode = "Play"
 
-    def showMenu(self):
-        self.overlayGameMode = MenuGameMode(self)
+    def showMenuRequested(self):
+        self.overlayGameMode = MenuGameMode()
+        self.overlayGameMode.addObserver(self)
         self.currentActiveMode = "Overlay"
 
     def showMessage(self, title, message=None):
-        self.overlayGameMode = MessageGameMode(self, title, message)
+        self.overlayGameMode = MessageGameMode(title, message)
+        self.overlayGameMode.addObserver(self)
         self.currentActiveMode = "Overlay"
+
+    def gameLost(self, score):
+        self.showMessage("Game Over", "Score : {}".format(score))
+        pygame.mixer.music.stop()
         
-    def quitGame(self):
+    def quitRequested(self):
         self.running = False
+
+    def musicChangedRequested(self, musicFile, volume, fadeOut=0):
+        pygame.mixer.music.fadeout(fadeOut)
+        pygame.mixer.music.load(musicFile)
+        pygame.mixer.music.play(-1)
+        pygame.mixer.music.set_volume(volume)
 
     def run(self):
         while self.running:
