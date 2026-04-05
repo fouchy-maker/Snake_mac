@@ -771,6 +771,8 @@ class UserInterface():
     def loadLevel(self, fileName):
         if self.playGameMode is None:
             self.playGameMode = PlayGameMode(self)
+        else:
+            self.playGameMode.__init__(self)
         self.playGameMode.commands.append(LoadLevelCommand(self.playGameMode, fileName))
         try :
             self.playGameMode.update()
