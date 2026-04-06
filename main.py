@@ -74,14 +74,16 @@ class GameState():
         # Store level
         self.level = level
 
-        # Define move delay
-        self.moveDelay = 10 - self.level
+        # Define move delay depending on level
+        self.moveDelays = [10, 10, 9, 8]
+        self.moveDelay = self.moveDelays[self.level - 1]
+
 
         # Define score
         self.score = 0
 
         # Define victory score
-        self.scoreVictory = 3
+        self.scoreVictory = 20
 
         # Define walls
         self.walls = [ [None ] * int(self.worldSize.x) ] * int(self.worldSize.y)
@@ -851,20 +853,23 @@ class PlayGameMode(GameMode):
                         command = FoodCommand(self.state, unit)
                         command.run()
                 self.state.foodMove = False
+
+            # Check Game Over
+            if self.playerUnit.status != "alive":
+                self.gameOver = True
+                self.notifyGameLost(self.state.score)
+
+            # Check Victory
+            if self.state.score >= self.state.scoreVictory:
+                self.gameOver = True
+                self.notifyGameWon(self.state.level)
+
+        # Run Slide Command
         SlideCommand(self.state, self.playerUnit, self.cellSize).run()
         for body in self.state.bodies:
             SlideCommand(self.state, body, self.cellSize).run()
+
         self.state.epoch += 1
-
-        # Check Game Over
-        if self.playerUnit.status != "alive":
-            self.gameOver = True
-            self.notifyGameLost(self.state.score)
-
-        # Check Victory
-        if self.state.score >= self.state.scoreVictory:
-            self.gameOver = True
-            self.notifyGameWon(self.state.level)
 
     def render(self, window):
         window.fill((200, 150, 50))
@@ -921,7 +926,7 @@ class UserInterface(GameModeObserver):
         self.window = pygame.display.set_mode((int(worldSize.x),int(worldSize.y)))
 
     def showGameRequested(self):
-        if self.playGameMode is not None:
+        if self.playGameMode is not None and self.playGameMode.gameOver is False:
             self.currentActiveMode = "Play"
 
     def showMenuRequested(self):
