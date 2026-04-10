@@ -1,4 +1,5 @@
 from .Unit import Unit
+from pygame.math import Vector2
 
 class Snake(Unit):
     def __init__(self, gameState, position, tile):
