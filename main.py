@@ -1,11 +1,20 @@
 import pygame
 import os
+import sys
 import random
 import tmx
 
 from pygame.math import Vector2
 
 os.environ['SDL_VIDEO_CENTERED'] = '1'
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS  # dossier temporaire PyInstaller
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
 
 ###############################################################################
 #                               Game State                                    #
@@ -437,12 +446,12 @@ class Layer(GameStateObserver):
     def __init__(self, cellSize, imageFile):
         self.cellSize = cellSize
         if imageFile is not None:
-            self.texture = pygame.image.load(imageFile).convert()
+            self.texture = pygame.image.load(resource_path("assets/textures/{}".format(imageFile))).convert()
             self.texture.set_colorkey(pygame.Color("black"), pygame.RLEACCEL)
 
     def setTileset(self, cellSize, imageFile):
         self.cellSize = cellSize
-        self.texture = pygame.image.load(imageFile).convert()
+        self.texture = pygame.image.load(resource_path(imageFile)).convert()
         self.texture.set_colorkey(pygame.Color("black"), pygame.RLEACCEL)
 
     @property
@@ -519,7 +528,7 @@ class ScoreLayer(Layer):
     def __init__(self, cellSize, imageFile, state, color=(0, 0, 0)):
         super().__init__(cellSize, imageFile)
         self.state = state
-        self.font = pygame.font.Font("Winter_Draw.ttf", 30)
+        self.font = pygame.font.Font(resource_path("assets/fonts/Winter_Draw.ttf"), 30)
         self.position = Vector2(self.state.worldWidth, 0)
         self.color = color
 
@@ -533,11 +542,11 @@ class ScoreLayer(Layer):
 
 class SoundLayer(Layer):
     def __init__(self, foodCollideFile, impactFile, victoryFile):
-        self.foodCollideSound = pygame.mixer.Sound(foodCollideFile)
+        self.foodCollideSound = pygame.mixer.Sound(resource_path("assets/sounds/{}".format(foodCollideFile)))
         self.foodCollideSound.set_volume(0.5)
-        self.impactSound = pygame.mixer.Sound(impactFile)
+        self.impactSound = pygame.mixer.Sound(resource_path("assets/sounds/{}".format(impactFile)))
         self.impactSound.set_volume(0.5)
-        self.victorySound = pygame.mixer.Sound(victoryFile)
+        self.victorySound = pygame.mixer.Sound(resource_path("assets/sounds/{}".format(victoryFile)))
         self.victorySound.set_volume(0.5)
 
     def foodCollide(self):
@@ -616,9 +625,9 @@ class MessageGameMode(GameMode):
     def __init__(self, title, message, flag="gameOver", level=1):
         super().__init__()
 
-        self.font = pygame.font.Font("Winter_Draw.ttf", 70)
-        self.fontScore = pygame.font.Font("Winter_Draw.ttf", 50)
-        self.fontEspace = pygame.font.Font("Winter_Draw.ttf", 30)
+        self.font = pygame.font.Font(resource_path("assets/fonts/Winter_Draw.ttf"), 70)
+        self.fontScore = pygame.font.Font(resource_path("assets/fonts/Winter_Draw.ttf"), 50)
+        self.fontEspace = pygame.font.Font(resource_path("assets/fonts/Winter_Draw.ttf"), 30)
 
         self.title = title
         self.message = message
@@ -627,7 +636,7 @@ class MessageGameMode(GameMode):
 
     def showMenu(self):
         self.notifyShowMenuRequested()
-        self.notifyMusicChangedRequested("assets/music/Shadow_Dance.mp3", 0.5)
+        self.notifyMusicChangedRequested("Shadow_Dance.mp3", 0.5)
 
     def processInput(self):
         for event in pygame.event.get():
@@ -644,7 +653,7 @@ class MessageGameMode(GameMode):
                     elif self.flag == "victory":
                         if self.level < 4:
                             self.level += 1
-                            self.notifyLoadLevelRequested("levels/level_{}.tmx".format(self.level), self.level)
+                            self.notifyLoadLevelRequested("level_{}.tmx".format(self.level), self.level)
                         else:
                             self.showMenu()
 
@@ -674,26 +683,26 @@ class MenuGameMode(GameMode):
     def __init__(self):
         super().__init__()
         # Fonts
-        self.titleFont = pygame.font.Font("Winter_Draw.ttf", 70)
-        self.itemFont = pygame.font.Font("Winter_Draw.ttf", 50)
+        self.titleFont = pygame.font.Font(resource_path("assets/fonts/Winter_Draw.ttf"), 70)
+        self.itemFont = pygame.font.Font(resource_path("assets/fonts/Winter_Draw.ttf"), 50)
 
         # Menu Items
         self.menuItems = [
             {
                 "title": "Level 1",
-                "action": lambda: self.notifyLoadLevelRequested("levels/level_1.tmx", 1)
+                "action": lambda: self.notifyLoadLevelRequested("level_1.tmx", 1)
             },
             {
                 "title": "Level 2",
-                "action": lambda: self.notifyLoadLevelRequested("levels/level_2.tmx", 2)
+                "action": lambda: self.notifyLoadLevelRequested("level_2.tmx", 2)
             },
             {
                 "title": "Level 3",
-                "action": lambda: self.notifyLoadLevelRequested("levels/level_3.tmx", 3)
+                "action": lambda: self.notifyLoadLevelRequested("level_3.tmx", 3)
             },
             {
                 "title": "Level 4",
-                "action": lambda: self.notifyLoadLevelRequested("levels/level_4.tmx", 4)
+                "action": lambda: self.notifyLoadLevelRequested("level_4.tmx", 4)
             },
             {
                 "title": "Quit",
@@ -701,7 +710,7 @@ class MenuGameMode(GameMode):
             }
         ]
         self.currentMenuItem = 0
-        self.menuCursor = pygame.image.load("cursor.png").convert()
+        self.menuCursor = pygame.image.load(resource_path("assets/textures/cursor.png")).convert()
         self.menuCursor.set_colorkey(pygame.Color("black"), pygame.RLEACCEL)
 
         # Compute Menu Width
@@ -777,7 +786,7 @@ class PlayGameMode(GameMode):
             ArrayLayer(self.cellSize, "snake_fouchy32.png", self.state, self.state.walls, 0), # Walls
             UnitLayer(self.cellSize, "snake_fouchy32.png", self.state, self.state.units), # Units
             ScoreLayer(self.cellSize, None, self.state), # Score
-            SoundLayer("assets/sounds/gotFood.wav", "assets/sounds/impact.wav", "assets/sounds/victory.wav") # Sounds
+            SoundLayer("gotFood.wav", "impact.wav", "victory.wav") # Sounds
         ]
 
         # All layers observe GameState
@@ -888,7 +897,7 @@ class UserInterface(GameModeObserver):
         pygame.init()
         self.window = pygame.display.set_mode((960, 640))
         pygame.display.set_caption("Snake")
-        pygame.display.set_icon(pygame.image.load("icon.png"))
+        pygame.display.set_icon(pygame.image.load(resource_path("assets/textures/icon.png")))
 
         # Modes
         self.playGameMode = None
@@ -901,7 +910,7 @@ class UserInterface(GameModeObserver):
         self.running = True
 
         # Menu Music
-        self.musicChangedRequested("assets/music/Shadow_Dance.mp3", 0.5)
+        self.musicChangedRequested("Shadow_Dance.mp3", 0.5)
 
     def loadLevelRequested(self, fileName, level):
         if self.playGameMode is None:
@@ -911,11 +920,11 @@ class UserInterface(GameModeObserver):
             self.playGameMode.__init__(level)
             self.playGameMode.addObserver(self)
 
-        self.playGameMode.commands.append(LoadLevelCommand(self.playGameMode, fileName))
+        self.playGameMode.commands.append(LoadLevelCommand(self.playGameMode, resource_path("levels/{}".format(fileName))))
         try :
             self.playGameMode.update()
             self.currentActiveMode = "Play"
-            self.musicChangedRequested("assets/music/Elephant_Walk.wav", 0.3, 2000)
+            self.musicChangedRequested("Elephant_Walk.wav", 0.3, 2000)
 
         except Exception as ex:
             print(ex)
@@ -952,7 +961,7 @@ class UserInterface(GameModeObserver):
 
     def musicChangedRequested(self, musicFile, volume, fadeOut=0):
         pygame.mixer.music.fadeout(fadeOut)
-        pygame.mixer.music.load(musicFile)
+        pygame.mixer.music.load(resource_path("assets/music/{}".format(musicFile)))
         pygame.mixer.music.play(-1)
         pygame.mixer.music.set_volume(volume)
 
