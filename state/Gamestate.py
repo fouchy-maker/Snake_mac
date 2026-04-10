@@ -1,3 +1,5 @@
+from pygame.math import Vector2
+
 class GameState():
     def __init__(self, level):
         # Define time unit
