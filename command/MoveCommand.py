@@ -88,7 +88,7 @@ class MoveCommand(Command):
 
             # Speed up over 5 scores
             scoreMult = self.state.score / 5
-            if scoreMult.is_integer() and self.state.moveDelay >= 5:
+            if scoreMult.is_integer() and self.state.moveDelay >= self.state.moveDelayMin:
                 self.state.moveDelay -= 1
                 print("Speed Up ! ({})".format(self.state.moveDelay))
 

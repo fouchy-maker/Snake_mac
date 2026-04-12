@@ -31,9 +31,13 @@ class Layer(GameStateObserver):
     def cellHeight(self):
         return int(self.cellSize.y)
 
-    def renderTile(self, surface, position, tile, slidePos=Vector2(0,0), angle=None):
+    def renderTile(self, surface, position, tile, slidePos=Vector2(0,0), borderPos=Vector2(0,0), angle=None):
         # Location on screen
         spritePoint = position.elementwise() * self.cellSize + slidePos
+
+        # Location if border colliding
+        if borderPos != Vector2(0,0):
+            borderPoint = position.elementwise() * self.cellSize + borderPos
 
         # Texture
         texturePoint = tile.elementwise() * self.cellSize
@@ -42,6 +46,8 @@ class Layer(GameStateObserver):
         # Draw Tile
         if angle is None:
             surface.blit(self.texture, spritePoint, textureRect)
+            if borderPos != Vector2(0,0):
+                surface.blit(self.texture, borderPoint, textureRect)
         else:
             # Extract the tile in a surface
             textureTile = pygame.Surface((self.cellWidth, self.cellHeight), pygame.SRCALPHA)
@@ -53,6 +59,8 @@ class Layer(GameStateObserver):
             spritePoint.y -= (rotatedTile.get_height() - textureTile.get_height()) // 2
             # Render the rotatedTile
             surface.blit(rotatedTile, spritePoint)
+            if borderPos != Vector2(0,0):
+                surface.blit(rotatedTile, borderPoint)
 
     def render(self, surface):
         raise NotImplementedError()

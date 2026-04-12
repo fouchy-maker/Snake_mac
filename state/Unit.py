@@ -8,4 +8,5 @@ class Unit():
         self.angle = angle
         self.lastMoveEpoch = 0
         self.slidePos = Vector2(0, 0)
+        self.borderPos = Vector2(0, 0)
         self.status = "alive"

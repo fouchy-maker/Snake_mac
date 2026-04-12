@@ -14,13 +14,13 @@ class GameState():
         # Define move delay depending on level
         self.moveDelays = [10, 10, 9, 8]
         self.moveDelay = self.moveDelays[self.level - 1]
-
+        self.moveDelayMin = 7
 
         # Define score
         self.score = 0
 
         # Define victory score
-        self.scoreVictory = 20
+        self.scoreVictory = 50
 
         # Define walls
         self.walls = [ [None ] * int(self.worldSize.x) ] * int(self.worldSize.y)
