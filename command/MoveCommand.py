@@ -1,6 +1,6 @@
 from .Command import Command
 from pygame.math import Vector2
-from state import Food, Body
+from state import Food
 
 class MoveCommand(Command):
     def __init__(self, gameState, unit, direction):
@@ -38,8 +38,16 @@ class MoveCommand(Command):
         elif new_pos.y > self.state.worldHeight - 1:
             new_pos.y = 0
 
+        # If the player touches another player, set game status to Game Over
+        players = [self.state.units[0], self.state.units[1]]
+        for player in players:
+            if new_pos == player.position:
+                self.gameOver()
+                return
+
         # If the player touches a body, set game status to Game Over
-        for body in self.state.bodies:
+        bodies = self.state.units[0].bodies + self.state.units[1].bodies
+        for body in bodies:
             if new_pos == body.position:
                 self.gameOver()
                 return
@@ -57,13 +65,13 @@ class MoveCommand(Command):
         self.unit.slidePos = Vector2(0,0)
 
         # Add the new position to the position List
-        self.state.positionList.append(self.unit.position)
+        self.unit.positionList.append(self.unit.position)
 
         # Compute bodies positions
         index = 0
-        for body in self.state.bodies:
+        for body in self.unit.bodies:
             try:
-                new_pos = self.state.positionList[-index-2]
+                new_pos = self.unit.positionList[-index-2]
             except IndexError:
                 new_pos = body.position
             body.position = new_pos
@@ -71,20 +79,21 @@ class MoveCommand(Command):
             index += 1
 
         # Delete positions not used by player or bodies
-        if len(self.state.positionList) > len(self.state.bodies) + 3:
-            del self.state.positionList[-(len(self.state.bodies) + 4)]
+        if len(self.unit.positionList) > len(self.unit.bodies) + 3:
+            del self.unit.positionList[-(len(self.unit.bodies) + 4)]
 
         # Compute collision with Food
         food = next(obj for obj in self.state.units if isinstance(obj, Food))
         if self.unit.position == food.position:
             # Increment score
             self.state.score += 1
+            # Victory
             if self.state.score >= self.state.scoreVictory:
                 self.state.notifyLevelComplete()
                 return
             self.state.foodMove = True
             # Add a Body to bodies list
-            self.state.bodies.append(Body(self.state, self.state.positionList[1], Vector2(1, 0)))
+            self.unit.addBody()
 
             # Speed up over 5 scores
             scoreMult = self.state.score / 5

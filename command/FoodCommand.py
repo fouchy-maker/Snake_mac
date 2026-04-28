@@ -15,8 +15,10 @@ class FoodCommand(Command):
                 random.randint(0, self.state.worldWidth - 1),
                 random.randint(0, self.state.worldHeight - 1)
             )
-            # Units position
-            for pos in self.state.positionList:
+
+            # Units and bodies positions
+            positions = self.state.units[0].positionList + self.state.units[1].positionList
+            for pos in positions:
                 if new_pos == pos:
                     new_pos = None
                     print("Food Reposition !")

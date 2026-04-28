@@ -28,8 +28,10 @@ class PlayGameMode(GameMode):
 
         # Controls
         self.commands = []
-        self.moveCommandList = []
+        self.moveCommandList1 = []
+        self.moveCommandList2 = []
         self.playerUnit = None
+        self.player2Unit = None
         self.gameOver = False
 
     # Set properties for cell width and height
@@ -39,6 +41,23 @@ class PlayGameMode(GameMode):
     @property
     def cellHeight(self):
         return int(self.cellSize.y)
+
+    def snakeCommand(self, moveCommandList, playerUnit):
+        """
+        Run Snake Command if the direction is different from player's or opposite.
+        If command list is empty, run Command with current direction.
+        """
+        while len(moveCommandList) > 0:
+            dir_opp = {"up": "down", "down": "up", "left": "right", "right": "left"}
+            firstCommand = moveCommandList[0]
+            if not (firstCommand.direction == playerUnit.direction
+                    or firstCommand.direction == dir_opp[playerUnit.direction]):
+                firstCommand.run()
+                del moveCommandList[0]
+                break
+            del moveCommandList[0]
+        else:
+            MoveCommand(self.state, playerUnit, playerUnit.direction).run()
 
     def processInput(self):
         if self.gameOver:
@@ -51,21 +70,21 @@ class PlayGameMode(GameMode):
                 if event.key == pygame.K_ESCAPE:
                     self.notifyShowMenuRequested()
                 elif event.key == pygame.K_UP:
-                    self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "up"))
+                    self.moveCommandList1.append(MoveCommand(self.state, self.playerUnit, "up"))
                 elif event.key == pygame.K_DOWN:
-                    self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "down"))
+                    self.moveCommandList1.append(MoveCommand(self.state, self.playerUnit, "down"))
                 elif event.key == pygame.K_LEFT:
-                    self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "left"))
+                    self.moveCommandList1.append(MoveCommand(self.state, self.playerUnit, "left"))
                 elif event.key == pygame.K_RIGHT:
-                    self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "right"))
+                    self.moveCommandList1.append(MoveCommand(self.state, self.playerUnit, "right"))
                 elif event.key == pygame.K_z:
-                    self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "up"))
+                    self.moveCommandList2.append(MoveCommand(self.state, self.player2Unit, "up"))
                 elif event.key == pygame.K_s:
-                    self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "down"))
+                    self.moveCommandList2.append(MoveCommand(self.state, self.player2Unit, "down"))
                 elif event.key == pygame.K_q:
-                    self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "left"))
+                    self.moveCommandList2.append(MoveCommand(self.state, self.player2Unit, "left"))
                 elif event.key == pygame.K_d:
-                    self.moveCommandList.append(MoveCommand(self.state, self.playerUnit, "right"))
+                    self.moveCommandList2.append(MoveCommand(self.state, self.player2Unit, "right"))
 
 
     def update(self):
@@ -74,19 +93,10 @@ class PlayGameMode(GameMode):
             self.commands.clear()
         if self.state.epoch-self.playerUnit.lastMoveEpoch >= self.state.moveDelay:
             self.playerUnit.lastMoveEpoch = self.state.epoch
-            # Run Snake Command if the direction is different from player's or opposite
-            while len(self.moveCommandList) > 0:
-                dir_opp = {"up": "down", "down": "up", "left": "right", "right": "left"}
-                firstCommand = self.moveCommandList[0]
-                if not (firstCommand.direction == self.playerUnit.direction
-                        or firstCommand.direction == dir_opp[self.playerUnit.direction]):
-                    firstCommand.run()
-                    del self.moveCommandList[0]
-                    break
-                del self.moveCommandList[0]
-            # If Snake Command List is empty, run Command with snake position
-            else:
-                MoveCommand(self.state, self.playerUnit, self.playerUnit.direction).run()
+
+            # Run Snake Commands
+            self.snakeCommand(self.moveCommandList1, self.playerUnit)
+            self.snakeCommand(self.moveCommandList2, self.player2Unit)
 
             # Run Food Command
             if self.state.foodMove:
@@ -99,7 +109,10 @@ class PlayGameMode(GameMode):
             # Check Game Over
             if self.playerUnit.status != "alive":
                 self.gameOver = True
-                self.notifyGameLost(self.state.score)
+                self.notifyPlayer2Win(self.state.score)
+            elif self.player2Unit.status != "alive":
+                self.gameOver = True
+                self.notifyPlayer1Win(self.state.score)
 
             # Check Victory
             if self.state.score >= self.state.scoreVictory:
@@ -108,7 +121,10 @@ class PlayGameMode(GameMode):
 
         # Run Slide Command
         SlideCommand(self.state, self.playerUnit, self.cellSize).run()
-        for body in self.state.bodies:
+        SlideCommand(self.state, self.player2Unit, self.cellSize).run()
+        for body in self.playerUnit.bodies:
+            SlideCommand(self.state, body, self.cellSize).run()
+        for body in self.player2Unit.bodies:
             SlideCommand(self.state, body, self.cellSize).run()
 
         self.state.epoch += 1

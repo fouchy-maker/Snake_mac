@@ -11,6 +11,10 @@ class GameModeObserver():
         pass
     def gameLost(self, score):
         pass
+    def player1Win(self, score):
+        pass
+    def player2Win(self, score):
+        pass
     def quitRequested(self):
         pass
     def musicChangedRequested(self, musicFile, volume, fadeOut=0):

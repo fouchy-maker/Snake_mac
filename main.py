@@ -76,7 +76,15 @@ class UserInterface(GameModeObserver):
         pygame.mixer.music.stop()
 
     def gameLost(self, score):
-        self.showMessage("Game Over", "Score : {}".format(score))
+        self.showMessage("Game Over !", "Score : {}".format(score))
+        pygame.mixer.music.stop()
+
+    def player1Win(self, score):
+        self.showMessage("Green Win !", "Score : {}".format(score))
+        pygame.mixer.music.stop()
+
+    def player2Win(self, score):
+        self.showMessage("Pink Win !", "Score : {}".format(score))
         pygame.mixer.music.stop()
         
     def quitRequested(self):

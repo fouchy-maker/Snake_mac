@@ -1,7 +1,7 @@
 from .Unit import Unit
 from pygame.math import Vector2
 
-class Body(Unit):
+class Body2(Unit):
     def __init__(self, gameState, position, tile):
         super().__init__(gameState, position, tile)
 
@@ -9,10 +9,10 @@ class Body(Unit):
         """
         Returns the penultimate position of the body if there is one, or returns left to actual position.
         """
-        for index, body in enumerate(self.state.units[0].bodies):
+        for index, body in enumerate(self.state.units[1].bodies):
             if body.position == self.position:
                 try:
-                    lastPos = self.state.units[0].positionList[-index-3]
+                    lastPos = self.state.units[1].positionList[-index-3]
                 except IndexError:
                     lastPos = self.position + Vector2(-1, 0)
         return lastPos

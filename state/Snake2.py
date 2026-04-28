@@ -1,8 +1,8 @@
 from .Unit import Unit
-from .Body import Body
+from .Body2 import Body2
 from pygame.math import Vector2
 
-class Snake(Unit):
+class Snake2(Unit):
     def __init__(self, gameState, position, tile):
         super().__init__(gameState, position, tile)
 
@@ -23,4 +23,4 @@ class Snake(Unit):
         """
         Adds a new body to the snake
         """
-        self.bodies.append(Body(self.state, self.positionList[1], Vector2(1, 0)))
+        self.bodies.append(Body2(self.state, self.positionList[1], Vector2(1, 2)))

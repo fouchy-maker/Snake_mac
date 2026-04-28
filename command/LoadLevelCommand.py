@@ -1,6 +1,6 @@
 from .Command import Command
 from command import FoodCommand
-from state import Snake, Body, Food
+from state import Snake, Body, Food, Snake2, Body2
 from pygame.math import Vector2
 import tmx
 import os
@@ -93,6 +93,10 @@ class LoadLevelCommand(Command):
                     unit = Body(state, Vector2(x, y), Vector2(tileX, tileY))
                 elif flag == "food":
                     unit = Food(state, Vector2(x, y), Vector2(tileX, tileY))
+                elif flag == "snake2":
+                    unit = Snake2(state, Vector2(x, y), Vector2(tileX, tileY))
+                elif flag == "body2":
+                    unit = Body2(state, Vector2(x, y), Vector2(tileX, tileY))
                 else:
                     raise RuntimeError("Error in {}: unknown flag".format(self.fileName))
                 units.append(unit)
@@ -108,7 +112,7 @@ class LoadLevelCommand(Command):
         # Check main properties
         if tileMap.orientation != ("orthogonal"):
             raise RuntimeError("Error in {}: invalid orientation".format(self.fileName))
-        if len(tileMap.layers) != 4:
+        if len(tileMap.layers) != 6:
             raise RuntimeError("Error in {}: invalid number of layers".format(self.fileName))
 
         # World size
@@ -126,16 +130,20 @@ class LoadLevelCommand(Command):
         snakeTileset, snake = self.decodeUnitsLayer(state, tileMap, tileMap.layers[1], "snake")
         bodyTileset, bodies = self.decodeUnitsLayer(state, tileMap, tileMap.layers[2], "body")
         foodTileset, foods = self.decodeUnitsLayer(state, tileMap, tileMap.layers[3], "food")
-        if snakeTileset != wallsTileset or bodyTileset != wallsTileset or foodTileset != wallsTileset:
+        snake2Tileset, snake2 = self.decodeUnitsLayer(state, tileMap, tileMap.layers[4], "snake2")
+        body2Tileset, bodies2 = self.decodeUnitsLayer(state, tileMap, tileMap.layers[5], "body2")
+        if wallsTileset != (snakeTileset or bodyTileset or foodTileset or snake2Tileset or body2Tileset):
             raise RuntimeError("Error in {}: tilesets must be the same for all layers".format(self.fileName))
-        state.units[:] = snake + foods
+        snake[0].bodies[:] = bodies
+        snake2[0].bodies[:] = bodies2
+        state.units[:] = snake + snake2 + foods
         for food in foods:
             FoodCommand(state, food).run()
-        state.bodies[:] = bodies
         self.gameMode.layers[1].setTileset(cellSize, imageFile)
 
         # Player unit
         self.gameMode.playerUnit = snake[0]
+        self.gameMode.player2Unit = snake2[0]
 
         # Window
         windowSize = state.worldSize.elementwise() * cellSize

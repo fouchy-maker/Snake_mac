@@ -21,6 +21,12 @@ class GameMode():
     def notifyGameLost(self, score):
         for observer in self.__observers:
             observer.gameLost(score)
+    def notifyPlayer1Win(self, score):
+        for observer in self.__observers:
+            observer.player1Win(score)
+    def notifyPlayer2Win(self, score):
+        for observer in self.__observers:
+            observer.player2Win(score)
     def notifyQuitRequested(self):
         for observer in self.__observers:
             observer.quitRequested()

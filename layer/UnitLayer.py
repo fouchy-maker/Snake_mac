@@ -7,7 +7,8 @@ class UnitLayer(Layer):
         self.units = units
 
     def render(self, surface):
-        for body in self.state.bodies:
+        bodies = self.state.units[0].bodies + self.state.units[1].bodies
+        for body in bodies:
             self.renderTile(surface, body.lastPos(), body.tile, body.slidePos, body.borderPos)
         for unit in self.units:
             self.renderTile(surface, unit.lastPos(), unit.tile, unit.slidePos, unit.borderPos, unit.angle)
