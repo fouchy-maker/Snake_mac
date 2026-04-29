@@ -9,10 +9,10 @@ class Body2(Unit):
         """
         Returns the penultimate position of the body if there is one, or returns left to actual position.
         """
-        for index, body in enumerate(self.state.units[1].bodies):
+        for index, body in enumerate(self.state.players[1].bodies):
             if body.position == self.position:
                 try:
-                    lastPos = self.state.units[1].positionList[-index-3]
+                    lastPos = self.state.players[1].positionList[-index-3]
                 except IndexError:
                     lastPos = self.position + Vector2(-1, 0)
         return lastPos

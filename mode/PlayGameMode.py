@@ -1,12 +1,12 @@
 from .GameMode import GameMode
-from state import GameState, Food
-from layer import UnitLayer, ScoreLayer, SoundLayer, ArrayLayer
+from state import GameState
+from layer import SnakeLayer, ScoreLayer, SoundLayer, ArrayLayer, FoodLayer
 from command import MoveCommand, FoodCommand, SlideCommand
 import pygame
 from pygame.math import Vector2
 
 class PlayGameMode(GameMode):
-    def __init__(self, level):
+    def __init__(self, level, playerNumber):
         super().__init__()
         # Game State
         self.state = GameState(level)
@@ -14,10 +14,14 @@ class PlayGameMode(GameMode):
         # Cell Size
         self.cellSize = Vector2(32, 32)
 
+        # Player Number
+        self.playerNumber = playerNumber
+
         # Layer List
         self.layers = [
             ArrayLayer(self.cellSize, "snake_fouchy32.png", self.state, self.state.walls, 0), # Walls
-            UnitLayer(self.cellSize, "snake_fouchy32.png", self.state, self.state.units), # Units
+            SnakeLayer(self.cellSize, "snake_fouchy32.png", self.state, self.state.players), # Snakes
+            FoodLayer(self.cellSize, "snake_fouchy32.png", self.state, self.state.foods), # Foods
             ScoreLayer(self.cellSize, None, self.state), # Score
             SoundLayer("gotFood.wav", "impact.wav", "victory.wav") # Sounds
         ]
@@ -68,7 +72,7 @@ class PlayGameMode(GameMode):
                 self.notifyQuitRequested()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    self.notifyShowMenuRequested()
+                    self.notifyShowMainMenuRequested()
                 elif event.key == pygame.K_UP:
                     self.moveCommandList1.append(MoveCommand(self.state, self.playerUnit, "up"))
                 elif event.key == pygame.K_DOWN:
@@ -96,23 +100,30 @@ class PlayGameMode(GameMode):
 
             # Run Snake Commands
             self.snakeCommand(self.moveCommandList1, self.playerUnit)
-            self.snakeCommand(self.moveCommandList2, self.player2Unit)
+            if self.playerNumber == 2:
+                self.snakeCommand(self.moveCommandList2, self.player2Unit)
+            else :
+                self.moveCommandList2.clear()
 
             # Run Food Command
             if self.state.foodMove:
-                for unit in self.state.units:
-                    if isinstance(unit, Food):
-                        command = FoodCommand(self.state, unit)
-                        command.run()
+                for food in self.state.foods:
+                    command = FoodCommand(self.state, food)
+                    command.run()
                 self.state.foodMove = False
 
             # Check Game Over
-            if self.playerUnit.status != "alive":
-                self.gameOver = True
-                self.notifyPlayer2Win(self.state.score)
-            elif self.player2Unit.status != "alive":
-                self.gameOver = True
-                self.notifyPlayer1Win(self.state.score)
+            if self.playerNumber == 2:
+                if self.playerUnit.status != "alive":
+                    self.gameOver = True
+                    self.notifyPlayer2Win(self.state.score)
+                elif self.player2Unit.status != "alive":
+                    self.gameOver = True
+                    self.notifyPlayer1Win(self.state.score)
+            else:
+                if self.playerUnit.status != "alive":
+                    self.gameOver = True
+                    self.notifyGameLost(self.state.score)
 
             # Check Victory
             if self.state.score >= self.state.scoreVictory:
@@ -121,11 +132,12 @@ class PlayGameMode(GameMode):
 
         # Run Slide Command
         SlideCommand(self.state, self.playerUnit, self.cellSize).run()
-        SlideCommand(self.state, self.player2Unit, self.cellSize).run()
         for body in self.playerUnit.bodies:
             SlideCommand(self.state, body, self.cellSize).run()
-        for body in self.player2Unit.bodies:
-            SlideCommand(self.state, body, self.cellSize).run()
+        if self.playerNumber == 2:
+            SlideCommand(self.state, self.player2Unit, self.cellSize).run()
+            for body in self.player2Unit.bodies:
+                SlideCommand(self.state, body, self.cellSize).run()
 
         self.state.epoch += 1
 

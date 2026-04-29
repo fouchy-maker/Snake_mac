@@ -1,7 +1,7 @@
 import pygame
 import os
 from layer import resource_path
-from mode import GameModeObserver, MenuGameMode, MessageGameMode, PlayGameMode
+from mode import GameModeObserver, LevelMenuGameMode, MessageGameMode, PlayGameMode, PlayerMenuGameMode, MainMenuGameMode
 from command import LoadLevelCommand
 
 os.environ['SDL_VIDEO_CENTERED'] = '1'
@@ -16,9 +16,10 @@ class UserInterface(GameModeObserver):
 
         # Modes
         self.playGameMode = None
-        self.overlayGameMode = MenuGameMode()
+        self.overlayGameMode = MainMenuGameMode()
         self.overlayGameMode.addObserver(self)
         self.currentActiveMode = 'Overlay'
+        self.playerNumber = None
 
         # Loop Properties
         self.clock = pygame.time.Clock()
@@ -29,13 +30,17 @@ class UserInterface(GameModeObserver):
 
     def loadLevelRequested(self, fileName, level):
         if self.playGameMode is None:
-            self.playGameMode = PlayGameMode(level)
+            self.playGameMode = PlayGameMode(level, self.playerNumber)
             self.playGameMode.addObserver(self)
         else:
-            self.playGameMode.__init__(level)
+            self.playGameMode.__init__(level, self.playerNumber)
             self.playGameMode.addObserver(self)
 
-        self.playGameMode.commands.append(LoadLevelCommand(self.playGameMode, resource_path("levels/{}".format(fileName))))
+        self.playGameMode.commands.append(LoadLevelCommand(
+            self.playGameMode,
+            resource_path("levels/{}".format(fileName)),
+            self.playerNumber
+        ))
         try :
             self.playGameMode.update()
             self.currentActiveMode = "Play"
@@ -57,14 +62,28 @@ class UserInterface(GameModeObserver):
     def worldSizeChanged(self, worldSize):
         self.window = pygame.display.set_mode((int(worldSize.x),int(worldSize.y)))
 
+    def showPlayerMenuRequested(self):
+        self.overlayGameMode = PlayerMenuGameMode()
+        self.overlayGameMode.addObserver(self)
+        self.currentActiveMode = "Overlay"
+
+    def showOptionsMenuRequested(self):
+        self.showMessage("Options menu requested...")
+
+    def showLevelMenuRequested(self, playerNumber):
+        self.overlayGameMode = LevelMenuGameMode()
+        self.overlayGameMode.addObserver(self)
+        self.currentActiveMode = "Overlay"
+        self.playerNumber = playerNumber
+
+    def showMainMenuRequested(self):
+        self.overlayGameMode = MainMenuGameMode()
+        self.overlayGameMode.addObserver(self)
+        self.currentActiveMode = "Overlay"
+
     def showGameRequested(self):
         if self.playGameMode is not None and self.playGameMode.gameOver is False:
             self.currentActiveMode = "Play"
-
-    def showMenuRequested(self):
-        self.overlayGameMode = MenuGameMode()
-        self.overlayGameMode.addObserver(self)
-        self.currentActiveMode = "Overlay"
 
     def showMessage(self, title, message=None, flag="gameOver", level=1):
         self.overlayGameMode = MessageGameMode(title, message, flag, level)

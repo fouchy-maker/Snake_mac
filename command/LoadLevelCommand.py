@@ -6,9 +6,10 @@ import tmx
 import os
 
 class LoadLevelCommand(Command):
-    def __init__(self, gameMode, fileName):
+    def __init__(self, gameMode, fileName, playerNumber):
         self.gameMode = gameMode
         self.fileName = fileName
+        self.playerNumber = playerNumber
 
     def decodeLayer(self, tileMap, layer):
         """
@@ -126,24 +127,34 @@ class LoadLevelCommand(Command):
         imageFile = wallsTileset.image.source
         self.gameMode.layers[0].setTileset(cellSize, imageFile)
 
-        # Units layer
+        # Snakes layer
         snakeTileset, snake = self.decodeUnitsLayer(state, tileMap, tileMap.layers[1], "snake")
         bodyTileset, bodies = self.decodeUnitsLayer(state, tileMap, tileMap.layers[2], "body")
-        foodTileset, foods = self.decodeUnitsLayer(state, tileMap, tileMap.layers[3], "food")
-        snake2Tileset, snake2 = self.decodeUnitsLayer(state, tileMap, tileMap.layers[4], "snake2")
-        body2Tileset, bodies2 = self.decodeUnitsLayer(state, tileMap, tileMap.layers[5], "body2")
-        if wallsTileset != (snakeTileset or bodyTileset or foodTileset or snake2Tileset or body2Tileset):
+        if wallsTileset != (snakeTileset or bodyTileset):
             raise RuntimeError("Error in {}: tilesets must be the same for all layers".format(self.fileName))
         snake[0].bodies[:] = bodies
-        snake2[0].bodies[:] = bodies2
-        state.units[:] = snake + snake2 + foods
-        for food in foods:
-            FoodCommand(state, food).run()
-        self.gameMode.layers[1].setTileset(cellSize, imageFile)
-
+        state.players[:] = snake
         # Player unit
         self.gameMode.playerUnit = snake[0]
-        self.gameMode.player2Unit = snake2[0]
+        # Two Players : load second player
+        if self.playerNumber == 2:
+            snake2Tileset, snake2 = self.decodeUnitsLayer(state, tileMap, tileMap.layers[4], "snake2")
+            body2Tileset, bodies2 = self.decodeUnitsLayer(state, tileMap, tileMap.layers[5], "body2")
+            if wallsTileset != (snake2Tileset or body2Tileset):
+                raise RuntimeError("Error in {}: tilesets must be the same for all layers".format(self.fileName))
+            snake2[0].bodies[:] = bodies2
+            state.players[:] = snake + snake2
+            self.gameMode.player2Unit = snake2[0]
+        self.gameMode.layers[1].setTileset(cellSize, imageFile)
+
+        # Food layer
+        foodTileset, foods = self.decodeUnitsLayer(state, tileMap, tileMap.layers[3], "food")
+        if wallsTileset != foodTileset:
+            raise RuntimeError("Error in {}: tilesets must be the same for all layers".format(self.fileName))
+        state.foods[:] = foods
+        for food in foods:
+            FoodCommand(state, food).run()
+        self.gameMode.layers[2].setTileset(cellSize, imageFile)
 
         # Window
         windowSize = state.worldSize.elementwise() * cellSize

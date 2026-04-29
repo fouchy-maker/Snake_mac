@@ -17,12 +17,12 @@ class FoodCommand(Command):
             )
 
             # Units and bodies positions
-            positions = self.state.units[0].positionList + self.state.units[1].positionList
-            for pos in positions:
-                if new_pos == pos:
-                    new_pos = None
-                    print("Food Reposition !")
-                    break
+            for player in self.state.players:
+                for pos in player.positionList:
+                    if new_pos == pos:
+                        new_pos = None
+                        print("Food Reposition !")
+                        break
 
             # Wall position
             for y in range(self.state.worldHeight):

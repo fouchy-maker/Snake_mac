@@ -9,9 +9,18 @@ class GameMode():
     def notifyWorldSizeChanged(self, worldSize):
         for observer in self.__observers:
             observer.worldSizeChanged(worldSize)
-    def notifyShowMenuRequested(self):
+    def notifyShowPlayerMenuRequested(self):
         for observer in self.__observers:
-            observer.showMenuRequested()
+            observer.showPlayerMenuRequested()
+    def notifyShowOptionsMenuRequested(self):
+        for observer in self.__observers:
+            observer.showOptionsMenuRequested()
+    def notifyShowLevelMenuRequested(self, playerNumber):
+        for observer in self.__observers:
+            observer.showLevelMenuRequested(playerNumber)
+    def notifyShowMainMenuRequested(self):
+        for observer in self.__observers:
+            observer.showMainMenuRequested()
     def notifyShowGameRequested(self):
         for observer in self.__observers:
             observer.showGameRequested()

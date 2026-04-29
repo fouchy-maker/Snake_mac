@@ -2,7 +2,7 @@ from .GameMode import GameMode
 from layer import resource_path
 import pygame
 
-class MenuGameMode(GameMode):
+class PlayerMenuGameMode(GameMode):
     def __init__(self):
         super().__init__()
         # Fonts
@@ -12,24 +12,16 @@ class MenuGameMode(GameMode):
         # Menu Items
         self.menuItems = [
             {
-                "title": "Level 1",
-                "action": lambda: self.notifyLoadLevelRequested("level_1.tmx", 1)
+                "title": "1 Player",
+                "action": lambda: self.notifyShowLevelMenuRequested(1)
             },
             {
-                "title": "Level 2",
-                "action": lambda: self.notifyLoadLevelRequested("level_2.tmx", 2)
+                "title": "2 Players",
+                "action": lambda: self.notifyShowLevelMenuRequested(2)
             },
             {
-                "title": "Level 3",
-                "action": lambda: self.notifyLoadLevelRequested("level_3.tmx", 3)
-            },
-            {
-                "title": "Level 4",
-                "action": lambda: self.notifyLoadLevelRequested("level_4.tmx", 4)
-            },
-            {
-                "title": "Quit",
-                "action": lambda: self.notifyQuitRequested()
+                "title": "Back",
+                "action": lambda: self.notifyShowMainMenuRequested()
             }
         ]
         self.currentMenuItem = 0
@@ -50,6 +42,8 @@ class MenuGameMode(GameMode):
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     self.notifyShowGameRequested()
+                elif event.key == pygame.K_BACKSPACE:
+                    self.notifyShowMainMenuRequested()
                 elif event.key == pygame.K_DOWN:
                     if self.currentMenuItem < len(self.menuItems) - 1:
                         self.currentMenuItem += 1

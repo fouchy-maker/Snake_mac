@@ -1,6 +1,5 @@
 from .Command import Command
 from pygame.math import Vector2
-from state import Food
 
 class MoveCommand(Command):
     def __init__(self, gameState, unit, direction):
@@ -39,18 +38,17 @@ class MoveCommand(Command):
             new_pos.y = 0
 
         # If the player touches another player, set game status to Game Over
-        players = [self.state.units[0], self.state.units[1]]
-        for player in players:
+        for player in self.state.players:
             if new_pos == player.position:
                 self.gameOver()
                 return
 
         # If the player touches a body, set game status to Game Over
-        bodies = self.state.units[0].bodies + self.state.units[1].bodies
-        for body in bodies:
-            if new_pos == body.position:
-                self.gameOver()
-                return
+        for player in self.state.players:
+            for body in player.bodies:
+                if new_pos == body.position:
+                    self.gameOver()
+                    return
 
         # If the player touches a wall, set game status to Game Over
         for y in range(self.state.worldHeight):
@@ -83,23 +81,23 @@ class MoveCommand(Command):
             del self.unit.positionList[-(len(self.unit.bodies) + 4)]
 
         # Compute collision with Food
-        food = next(obj for obj in self.state.units if isinstance(obj, Food))
-        if self.unit.position == food.position:
-            # Increment score
-            self.state.score += 1
-            # Victory
-            if self.state.score >= self.state.scoreVictory:
-                self.state.notifyLevelComplete()
-                return
-            self.state.foodMove = True
-            # Add a Body to bodies list
-            self.unit.addBody()
+        for food in self.state.foods:
+            if self.unit.position == food.position:
+                # Increment score
+                self.state.score += 1
+                # Victory
+                if self.state.score >= self.state.scoreVictory:
+                    self.state.notifyLevelComplete()
+                    return
+                self.state.foodMove = True
+                # Add a Body to bodies list
+                self.unit.addBody()
 
-            # Speed up over 5 scores
-            scoreMult = self.state.score / 5
-            if scoreMult.is_integer() and self.state.moveDelay >= self.state.moveDelayMin:
-                self.state.moveDelay -= 1
-                print("Speed Up ! ({})".format(self.state.moveDelay))
+                # Speed up over 5 scores
+                scoreMult = self.state.score / 5
+                if scoreMult.is_integer() and self.state.moveDelay >= self.state.moveDelayMin:
+                    self.state.moveDelay -= 1
+                    print("Speed Up ! ({})".format(self.state.moveDelay))
 
-            # Notify Sound Layer
-            self.state.notifyFoodCollide()
+                # Notify Sound Layer
+                self.state.notifyFoodCollide()

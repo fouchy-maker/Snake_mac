@@ -3,7 +3,13 @@ class GameModeObserver():
         pass
     def worldSizeChanged(self, worldSize):
         pass
-    def showMenuRequested(self):
+    def showPlayerMenuRequested(self):
+        pass
+    def showOptionsMenuRequested(self):
+        pass
+    def showLevelMenuRequested(self, playerNumber):
+        pass
+    def showMainMenuRequested(self):
         pass
     def showGameRequested(self):
         pass

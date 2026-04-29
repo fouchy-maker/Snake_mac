@@ -16,8 +16,9 @@ class MessageGameMode(GameMode):
         self.level = level
 
     def showMenu(self):
-        self.notifyShowMenuRequested()
-        self.notifyMusicChangedRequested("Shadow_Dance.mp3", 0.5)
+        self.notifyShowMainMenuRequested()
+        if not pygame.mixer.music.get_busy():
+            self.notifyMusicChangedRequested("Shadow_Dance.mp3", 0.5)
 
     def processInput(self):
         for event in pygame.event.get():

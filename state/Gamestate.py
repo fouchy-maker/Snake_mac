@@ -28,8 +28,9 @@ class GameState():
         # Set attribute to move food when colliding with player
         self.foodMove = False
 
-        # Define units list
-        self.units = []
+        # Define players and food lists
+        self.players = []
+        self.foods = []
 
         # Define observers lists
         self.observers = []
