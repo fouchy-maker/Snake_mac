@@ -1,7 +1,13 @@
 import pygame
 import os
 from layer import resource_path
-from mode import GameModeObserver, LevelMenuGameMode, MessageGameMode, PlayGameMode, PlayerMenuGameMode, MainMenuGameMode
+from mode import (GameModeObserver,
+                  LevelMenuGameMode,
+                  MessageGameMode,
+                  PlayGameMode,
+                  PlayerMenuGameMode,
+                  MainMenuGameMode
+                  )
 from command import LoadLevelCommand
 
 os.environ['SDL_VIDEO_CENTERED'] = '1'

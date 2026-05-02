@@ -4,3 +4,4 @@ from .MessageGameMode import MessageGameMode
 from .PlayGameMode import PlayGameMode
 from .MainMenuGameMode import MainMenuGameMode
 from .PlayerMenuGameMode import PlayerMenuGameMode
+from .MenuGameMode import MenuGameMode

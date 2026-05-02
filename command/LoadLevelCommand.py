@@ -1,6 +1,6 @@
 from .Command import Command
 from command import FoodCommand
-from state import Snake, Body, Food, Snake2, Body2
+from state import Snake1, Body1, Food, Snake2, Body2
 from pygame.math import Vector2
 import tmx
 import os
@@ -88,10 +88,10 @@ class LoadLevelCommand(Command):
                     raise RuntimeError("Error in {}: invalid tile id".format(self.fileName))
                 tileX = lid % tileset.columns
                 tileY = lid // tileset.columns
-                if flag == "snake":
-                    unit = Snake(state, Vector2(x, y), Vector2(tileX, tileY))
-                elif flag == "body":
-                    unit = Body(state, Vector2(x, y), Vector2(tileX, tileY))
+                if flag == "snake1":
+                    unit = Snake1(state, Vector2(x, y), Vector2(tileX, tileY))
+                elif flag == "body1":
+                    unit = Body1(state, Vector2(x, y), Vector2(tileX, tileY))
                 elif flag == "food":
                     unit = Food(state, Vector2(x, y), Vector2(tileX, tileY))
                 elif flag == "snake2":
@@ -128,8 +128,8 @@ class LoadLevelCommand(Command):
         self.gameMode.layers[0].setTileset(cellSize, imageFile)
 
         # Snakes layer
-        snakeTileset, snake = self.decodeUnitsLayer(state, tileMap, tileMap.layers[1], "snake")
-        bodyTileset, bodies = self.decodeUnitsLayer(state, tileMap, tileMap.layers[2], "body")
+        snakeTileset, snake = self.decodeUnitsLayer(state, tileMap, tileMap.layers[1], "snake1")
+        bodyTileset, bodies = self.decodeUnitsLayer(state, tileMap, tileMap.layers[2], "body1")
         if wallsTileset != (snakeTileset or bodyTileset):
             raise RuntimeError("Error in {}: tilesets must be the same for all layers".format(self.fileName))
         snake[0].bodies[:] = bodies

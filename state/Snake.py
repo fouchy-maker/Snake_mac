@@ -1,11 +1,9 @@
 from .Unit import Unit
-from .Body import Body
 from pygame.math import Vector2
 
 class Snake(Unit):
     def __init__(self, gameState, position, tile):
         super().__init__(gameState, position, tile)
-
         self.positionList = [self.position]
         self.direction = "right"
         self.bodies = []
@@ -20,7 +18,4 @@ class Snake(Unit):
             return self.position + Vector2(-1, 0)
 
     def addBody(self):
-        """
-        Adds a new body to the snake
-        """
-        self.bodies.append(Body(self.state, self.positionList[1], Vector2(1, 0)))
+        raise NotImplementedError
