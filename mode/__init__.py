@@ -5,3 +5,4 @@ from .PlayGameMode import PlayGameMode
 from .MainMenuGameMode import MainMenuGameMode
 from .PlayerMenuGameMode import PlayerMenuGameMode
 from .MenuGameMode import MenuGameMode
+from .RestartMenuGameMode import RestartMenuGameMode

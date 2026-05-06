@@ -1,33 +1,17 @@
 from .MenuGameMode import MenuGameMode
 import pygame
 
-class LevelMenuGameMode(MenuGameMode):
+class RestartMenuGameMode(MenuGameMode):
     def __init__(self):
         # Menu Items
         self.menuItems = [
             {
-                "title": "Level 1",
-                "action": lambda: self.notifyLoadLevelRequested("level_1.tmx", 1)
+                "title": "Try Again",
+                "action": lambda: self.notifyRestartLevelRequested()
             },
             {
-                "title": "Level 2",
-                "action": lambda: self.notifyLoadLevelRequested("level_2.tmx", 2)
-            },
-            {
-                "title": "Level 3",
-                "action": lambda: self.notifyLoadLevelRequested("level_3.tmx", 3)
-            },
-            {
-                "title": "Level 4",
-                "action": lambda: self.notifyLoadLevelRequested("level_4.tmx", 4)
-            },
-            {
-                "title": "Level 5",
-                "action": lambda: self.notifyLoadLevelRequested("level_5.tmx", 5)
-            },
-            {
-                "title": "Back",
-                "action": lambda: self.notifyShowPlayerMenuRequested()
+                "title": "Main Menu",
+                "action": lambda: self.notifyShowMainMenuRequested()
             }
         ]
         super().__init__()
@@ -38,7 +22,7 @@ class LevelMenuGameMode(MenuGameMode):
                 self.notifyQuitRequested()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE or event.key == pygame.K_BACKSPACE:
-                    self.notifyShowPlayerMenuRequested()
+                    self.notifyShowMainMenuRequested()
                 elif event.key == pygame.K_DOWN:
                     if self.currentMenuItem < len(self.menuItems) - 1:
                         self.currentMenuItem += 1

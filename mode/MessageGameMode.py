@@ -3,7 +3,7 @@ from layer import resource_path
 import pygame
 
 class MessageGameMode(GameMode):
-    def __init__(self, title, message, flag="gameOver", level=1):
+    def __init__(self, title, message, flag=None, level=1):
         super().__init__()
 
         self.fontTitle = pygame.font.Font(resource_path("assets/fonts/Winter_Draw.ttf"), 70)
@@ -15,11 +15,6 @@ class MessageGameMode(GameMode):
         self.flag = flag
         self.level = level
 
-    def showMenu(self):
-        self.notifyShowMainMenuRequested()
-        if not pygame.mixer.music.get_busy():
-            self.notifyMusicChangedRequested("Shadow_Dance.mp3", 0.5)
-
     def processInput(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -27,17 +22,19 @@ class MessageGameMode(GameMode):
                 break
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    self.showMenu()
+                    self.notifyShowMainMenuRequested()
                 if event.key == pygame.K_RETURN \
                 or event.key == pygame.K_SPACE:
                     if self.flag == "gameOver":
-                        self.showMenu()
+                        self.notifyShowRestartMenuRequested()
                     elif self.flag == "victory":
                         if self.level < 4:
                             self.level += 1
                             self.notifyLoadLevelRequested("level_{}.tmx".format(self.level), self.level)
                         else:
-                            self.showMenu()
+                            self.notifyShowMainMenuRequested()
+                    else:
+                        self.notifyShowMainMenuRequested()
 
     def update(self):
         pass

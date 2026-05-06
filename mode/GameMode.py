@@ -6,6 +6,9 @@ class GameMode():
     def notifyLoadLevelRequested(self, fileName, level):
         for observer in self.__observers:
             observer.loadLevelRequested(fileName, level)
+    def notifyRestartLevelRequested(self):
+        for observer in self.__observers:
+            observer.restartLevelRequested()
     def notifyWorldSizeChanged(self, worldSize):
         for observer in self.__observers:
             observer.worldSizeChanged(worldSize)
@@ -24,6 +27,9 @@ class GameMode():
     def notifyShowGameRequested(self):
         for observer in self.__observers:
             observer.showGameRequested()
+    def notifyShowRestartMenuRequested(self):
+        for observer in self.__observers:
+            observer.showRestartMenuRequested()
     def notifyGameWon(self, level):
         for observer in self.__observers:
             observer.gameWon(level)

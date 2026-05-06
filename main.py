@@ -6,7 +6,8 @@ from mode import (GameModeObserver,
                   MessageGameMode,
                   PlayGameMode,
                   PlayerMenuGameMode,
-                  MainMenuGameMode
+                  MainMenuGameMode,
+                  RestartMenuGameMode
                   )
 from command import LoadLevelCommand
 
@@ -26,6 +27,8 @@ class UserInterface(GameModeObserver):
         self.overlayGameMode.addObserver(self)
         self.currentActiveMode = 'Overlay'
         self.playerNumber = None
+        self.currentLevelNumber = None
+        self.currentLevelName = None
 
         # Loop Properties
         self.clock = pygame.time.Clock()
@@ -35,6 +38,8 @@ class UserInterface(GameModeObserver):
         self.musicChangedRequested("Shadow_Dance.mp3", 0.5)
 
     def loadLevelRequested(self, fileName, level):
+        self.currentLevelName = fileName
+        self.currentLevelNumber = level
         if self.playGameMode is None:
             self.playGameMode = PlayGameMode(level, self.playerNumber)
             self.playGameMode.addObserver(self)
@@ -65,6 +70,9 @@ class UserInterface(GameModeObserver):
             self.playGameMode = None
             self.showMessage("Level loading failed :'(")
 
+    def restartLevelRequested(self):
+        self.loadLevelRequested(self.currentLevelName, self.currentLevelNumber)
+
     def worldSizeChanged(self, worldSize):
         self.window = pygame.display.set_mode((int(worldSize.x),int(worldSize.y)))
 
@@ -86,13 +94,20 @@ class UserInterface(GameModeObserver):
         self.overlayGameMode = MainMenuGameMode()
         self.overlayGameMode.addObserver(self)
         self.currentActiveMode = "Overlay"
+        if not pygame.mixer.music.get_busy():
+            self.musicChangedRequested("Shadow_Dance.mp3", 0.5)
 
     def showGameRequested(self):
         if self.playGameMode is not None and self.playGameMode.gameOver is False:
             self.currentActiveMode = "Play"
 
-    def showMessage(self, title, message=None, flag="gameOver", level=1):
+    def showMessage(self, title, message=None, flag=None, level=1):
         self.overlayGameMode = MessageGameMode(title, message, flag, level)
+        self.overlayGameMode.addObserver(self)
+        self.currentActiveMode = "Overlay"
+
+    def showRestartMenuRequested(self):
+        self.overlayGameMode = RestartMenuGameMode()
         self.overlayGameMode.addObserver(self)
         self.currentActiveMode = "Overlay"
 
@@ -101,15 +116,15 @@ class UserInterface(GameModeObserver):
         pygame.mixer.music.stop()
 
     def gameLost(self, score):
-        self.showMessage("Game Over !", "Score : {}".format(score))
+        self.showMessage("Game Over !", "Score : {}".format(score), "gameOver")
         pygame.mixer.music.stop()
 
     def player1Win(self, score):
-        self.showMessage("Green Win !", "Score : {}".format(score))
+        self.showMessage("Green Win !", "Score : {}".format(score), "gameOver")
         pygame.mixer.music.stop()
 
     def player2Win(self, score):
-        self.showMessage("Pink Win !", "Score : {}".format(score))
+        self.showMessage("Pink Win !", "Score : {}".format(score), "gameOver")
         pygame.mixer.music.stop()
         
     def quitRequested(self):

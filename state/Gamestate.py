@@ -12,7 +12,7 @@ class GameState():
         self.level = level
 
         # Define move delay depending on level
-        self.moveDelays = [10, 10, 9, 8]
+        self.moveDelays = [10, 10, 9, 8, 10]
         self.moveDelay = self.moveDelays[self.level - 1]
         self.moveDelayMin = 7
 
